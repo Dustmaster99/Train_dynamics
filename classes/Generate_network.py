@@ -8,8 +8,9 @@ Created on Fri Sep 19 15:43:12 2025
 import networkx as nx
 import numpy as np
 import pandas as pd
+import random
 
-def gerar_matriz_adjacencia(topo_type: str, **kwargs) -> np.ndarray:
+def gerar_matriz_adjacencia_1(topo_type: str, **kwargs) -> np.ndarray:
     """
     Gera matriz de adjacência baseada em diversas topologias de rede
     
@@ -143,3 +144,48 @@ def visualizar_matriz_adjacencia(matriz_adjacencia, titulo="Matriz de Adjacênci
     print(f"\nDimensão: {matriz_adjacencia.shape}")
     print(f"Densidade: {np.sum(matriz_adjacencia > 0) / (matriz_adjacencia.shape[0] * matriz_adjacencia.shape[1]):.3f}")
 
+
+
+
+def gerar_matriz_adjacencia_2(
+    num_nos,
+    min_ligacoes,
+    max_ligacoes,
+    peso_min,
+    peso_max,
+    direcionado=False
+):
+    """
+    Gera uma matriz de adjacência para um grafo.
+
+    Parâmetros:
+    - num_nos (int): número de nós do grafo
+    - min_ligacoes (int): número mínimo de ligações por nó
+    - max_ligacoes (int): número máximo de ligações por nó
+    - peso_min (int): peso mínimo das arestas
+    - peso_max (int): peso máximo das arestas
+    - direcionado (bool): se True, cria grafo direcionado; se False, não direcionado
+
+    Retorna:
+    - np.ndarray: matriz de adjacência (num_nos x num_nos)
+    """
+    adj_matrix = np.zeros((num_nos, num_nos), dtype=int)
+
+    for i in range(num_nos):
+        num_lig = random.randint(min_ligacoes, max_ligacoes)
+        possiveis_vizinhos = list(range(num_nos))
+        possiveis_vizinhos.remove(i)
+        random.shuffle(possiveis_vizinhos)
+
+        ligacoes = 0
+        for j in possiveis_vizinhos:
+            if ligacoes >= num_lig:
+                break
+            if adj_matrix[i, j] == 0:
+                peso = random.randint(peso_min, peso_max)
+                adj_matrix[i, j] = peso
+                if not direcionado:
+                    adj_matrix[j, i] = peso
+                ligacoes += 1
+
+    return adj_matrix
