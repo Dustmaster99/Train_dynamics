@@ -24,6 +24,12 @@ class station_data:
     name: str
     ID: int
     
+@dataclass
+class train_data:
+    name: str
+    ID: int
+    itinerary:str
+    
 
 
 # Dicionário de estações
@@ -43,12 +49,17 @@ STATION_TABLE = {
     "S_M": station_data(name="S_M", ID=13),
 }
 
+TRAIN_TABLE = {
+    "T_A": train_data(name="T_A", ID=1, itinerary="I_A"),
+    "T_B": train_data(name="T_B", ID=2, itinerary="I_B"),
+}
+
 
 # Dicionário de itinerários
 ITINERARY_TABLE = {
     "I_A": itinerary_data(path=["S_A", "S_B", "S_C", "S_D"], start_station="S_A", end_station="S_D"),
-    "I_B": itinerary_data(path=["S_A","S_B","S_C","S_D","S_E","S_F","S_G","S_H","S_I","S_J","S_K","S_L","S_M"], start_station="S_A", end_station="S_M"),
-    "I_C": itinerary_data(path=["S_E", "S_F", "S_G", "S_H"], start_station="S_A", end_station="S_H"),
+    "I_B": itinerary_data(path=["S_D", "S_C", "S_B", "S_A"], start_station="S_D", end_station="S_A"),
+    "I_C": itinerary_data(path=["S_A","S_B","S_C","S_D","S_E","S_F","S_G","S_H","S_I","S_J","S_K","S_L","S_M"], start_station="S_A", end_station="S_M"),
 }
 
 
@@ -93,5 +104,13 @@ def get_station_info(STATION_TABLE):
 
 
 
-
-
+def get_train_info(TRAIN_TABLE):
+    """
+    Versão mais concisa usando list comprehension
+    """
+    train_namelist = [train_obj.name for train_obj in TRAIN_TABLE.values()]
+    train_ids = [train_obj.ID for train_obj in TRAIN_TABLE.values()]
+    n_trains = len(TRAIN_TABLE)
+    itinerary_list = [train_obj.itinerary for train_obj in TRAIN_TABLE.values()]
+    
+    return train_namelist, train_ids, n_trains,itinerary_list
