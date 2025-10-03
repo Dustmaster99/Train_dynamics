@@ -28,16 +28,27 @@ class station_data:
 
 # Dicionário de estações
 STATION_TABLE = {
-    "S_A": station_data( name = "S_A", ID = 1),
-    "S_B": station_data( name = "S_B", ID = 2),
-    "S_C": station_data( name = "S_C", ID = 3),
-    "S_D": station_data( name = "S_D", ID = 4),
-
+    "S_A": station_data(name="S_A", ID=1),
+    "S_B": station_data(name="S_B", ID=2),
+    "S_C": station_data(name="S_C", ID=3),
+    "S_D": station_data(name="S_D", ID=4),
+    "S_E": station_data(name="S_E", ID=5),
+    "S_F": station_data(name="S_F", ID=6),
+    "S_G": station_data(name="S_G", ID=7),
+    "S_H": station_data(name="S_H", ID=8),
+    "S_I": station_data(name="S_I", ID=9),
+    "S_J": station_data(name="S_J", ID=10),
+    "S_K": station_data(name="S_K", ID=11),
+    "S_L": station_data(name="S_L", ID=12),
+    "S_M": station_data(name="S_M", ID=13),
 }
+
 
 # Dicionário de itinerários
 ITINERARY_TABLE = {
     "I_A": itinerary_data(path=["S_A", "S_B", "S_C", "S_D"], start_station="S_A", end_station="S_D"),
+    "I_B": itinerary_data(path=["S_A","S_B","S_C","S_D","S_E","S_F","S_G","S_H","S_I","S_J","S_K","S_L","S_M"], start_station="S_A", end_station="S_M"),
+    "I_C": itinerary_data(path=["S_E", "S_F", "S_G", "S_H"], start_station="S_A", end_station="S_H"),
 }
 
 
