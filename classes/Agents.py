@@ -66,7 +66,7 @@ class Train(mesa.Agent):
         self.node_target = None
        
         self.last_node = None
-        self.velocity = 30 # velocity in m/s
+        self.velocity = 70 # velocity in m/s
         
         self.displacement = 0 # Displacement position in the current adge. ( All trains start at 0 )
         self.advance_to_next_node = False # bool variable to see if the object already moved pass the treshold of advancing to next node
