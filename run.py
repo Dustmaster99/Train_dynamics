@@ -28,27 +28,31 @@ print(adj_matrix)
 
 
 adj_matrix = [
-    [0, 50, 0, 0, 0, 0, 50],
-    [50, 0, 50, 0, 0, 0, 0],
-    [0, 50, 0, 50, 0, 0, 0],
-    [0, 0, 50, 0, 50, 0, 0],
-    [0, 0, 0, 50, 0, 50, 0],
-    [0, 0, 0, 0, 50, 0, 50],
-    [50, 0, 0, 0, 0, 50, 0]
+    [0, 50, 50, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 50, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 50, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 50, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 50, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 50, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 50, 50, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 50],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 50],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ]
 
-station_nodes = ["S_A", None, "S_B", None, "S_C", None, "S_D"]
+
+number_of_nodes = 10
+
+#station_nodes = ["S_A","S_B","S_C","S_D","S_E","S_F","S_G","S_H","S_I","S_J","S_K","S_L","S_M"]
+station_nodes = ["S_A","S_B","S_C","S_D"]
+station_nodes =  Gen.insert_random_nones(station_nodes,number_of_nodes)
 
 '''
 adj_matrix = Gen.gerar_matriz_adjacencia_2(
-    num_nos=15,
-    min_ligacoes=2,
-    max_ligacoes=3,
-    peso_min=10,
-    peso_max=30,
-    direcionado=False
-)
-'''
+    num_nos=number_of_nodes,
+    peso_min=100,
+    peso_max=1000
+)'''
 
 n_trains = 1
 
@@ -57,5 +61,6 @@ for t in range(50):
     model.step()
     plot.print_network_state(model.grid.G,t) 
     plot.plot_network_state(model.grid.G,t)
+    plot.plot_network_state_pyvis(model.grid.G,t)
 
               
