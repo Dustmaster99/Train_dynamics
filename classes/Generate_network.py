@@ -146,46 +146,72 @@ def visualizar_matriz_adjacencia(matriz_adjacencia, titulo="Matriz de Adjacênci
 
 
 
+import numpy as np
+import random
 
-def gerar_matriz_adjacencia_2(
-    num_nos,
-    min_ligacoes,
-    max_ligacoes,
-    peso_min,
-    peso_max,
-    direcionado=False
-):
+import numpy as np
+import random
+
+def gerar_matriz_adjacencia_2(num_nos, peso_min, peso_max, direcionado=False):
     """
-    Gera uma matriz de adjacência para um grafo.
-
-    Parâmetros:
-    - num_nos (int): número de nós do grafo
-    - min_ligacoes (int): número mínimo de ligações por nó
-    - max_ligacoes (int): número máximo de ligações por nó
-    - peso_min (int): peso mínimo das arestas
-    - peso_max (int): peso máximo das arestas
-    - direcionado (bool): se True, cria grafo direcionado; se False, não direcionado
-
-    Retorna:
-    - np.ndarray: matriz de adjacência (num_nos x num_nos)
+    Gera matriz de adjacência replicando um padrão de rede em camadas:
+    - Nó 0 e nó n-1 são de grau 1
+    - Nós intermediários formam duas camadas (ou mais) com ramificações e convergências
+    - Rede é sempre conectada
+    - Pesos aleatórios entre peso_min e peso_max
     """
     adj_matrix = np.zeros((num_nos, num_nos), dtype=int)
-
-    for i in range(num_nos):
-        num_lig = random.randint(min_ligacoes, max_ligacoes)
-        possiveis_vizinhos = list(range(num_nos))
-        possiveis_vizinhos.remove(i)
-        random.shuffle(possiveis_vizinhos)
-
-        ligacoes = 0
-        for j in possiveis_vizinhos:
-            if ligacoes >= num_lig:
-                break
-            if adj_matrix[i, j] == 0:
-                peso = random.randint(peso_min, peso_max)
-                adj_matrix[i, j] = peso
-                if not direcionado:
-                    adj_matrix[j, i] = peso
-                ligacoes += 1
-
+    
+    # Dividir nós em camadas
+    camada_entrada = [0]
+    camada_saida = [num_nos-1]
+    
+    # Distribuir nós intermediários em duas "sub-camadas"
+    intermediarios = list(range(1, num_nos-1))
+    meio = len(intermediarios) // 2
+    camada_1 = intermediarios[:meio]
+    camada_2 = intermediarios[meio:]
+    
+    # Conectar entrada à primeira camada
+    for i in camada_1:
+        peso = random.randint(peso_min, peso_max)
+        adj_matrix[0, i] = peso
+        if not direcionado:
+            adj_matrix[i, 0] = peso
+    
+    # Conectar primeira camada à segunda camada
+    for i in camada_1:
+        j = random.choice(camada_2)
+        peso = random.randint(peso_min, peso_max)
+        adj_matrix[i, j] = peso
+        if not direcionado:
+            adj_matrix[j, i] = peso
+    
+    # Conectar segunda camada à saída
+    for j in camada_2:
+        peso = random.randint(peso_min, peso_max)
+        adj_matrix[j, num_nos-1] = peso
+        if not direcionado:
+            adj_matrix[num_nos-1, j] = peso
+    
     return adj_matrix
+
+
+def insert_random_nones(station_nodes, n):
+    if n < len(station_nodes):
+        raise ValueError("n deve ser maior ou igual ao tamanho da lista original")
+    
+    result = station_nodes[:]  # cópia da lista
+    extra_nones = n - len(station_nodes)
+
+    # posições válidas para inserção (apenas entre 1 e len(result)-1)
+    positions = list(range(1, len(result)))  
+    
+    for _ in range(extra_nones):
+        pos = random.choice(positions)
+        result.insert(pos, None)
+        # atualizar posições (mas sempre mantendo início e fim fixos)
+        positions = list(range(1, len(result)))  
+    
+    return result
+
