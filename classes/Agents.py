@@ -52,15 +52,16 @@ class Train(mesa.Agent):
     Agente que representa um trem.
     Ele "viaja" de nó em nó pelo grafo (o meio).
     """
-    def __init__(self,model,pos, ID):
+    def __init__(self,model,name,pos, ID, ITINERARY):
         # Pass the parameters to the parent class.
         super().__init__(model)
         # Create the agent's attribute and set the initial values.
         self.network = model.grid.G
         self.trainID = ID
         self.node = pos
-        self.itinerary = None
+        self.itinerary = ITINERARY
         self.next_mission = None
+        self.name = name
         
         self.update_target = True
         self.node_target = None
@@ -213,15 +214,19 @@ class TrainFlowModel(mesa.Model):
       - Agentes como Trens viajando.
     """
     
-    def __init__(self, n_trens, adj_matrix, station_nodes_list, seed = None):
+    def __init__(self, adj_matrix, station_nodes_list, train_nodes_list ,seed = None):
         
         super().__init__(seed=seed)
         # cria grafo determinado pela matrix de adjacências adj_matrix
         G = nx.from_numpy_array(np.array(adj_matrix))
         
         # concatena os nomes das estações aos nós pertencentes das mesmas
-        for i, name in enumerate(station_nodes_list ):
-            G.nodes[i]['station_name'] = name
+        for i, station_name in enumerate(station_nodes_list ):
+            G.nodes[i]['station_name'] = station_name
+        
+        # concatena os nomes das estações aos nós pertencentes das mesmas
+        for i, train_name in enumerate(train_nodes_list ):
+            G.nodes[i]['train_name'] = train_name
         
         
         # Importa informações de topologia :
@@ -229,17 +234,17 @@ class TrainFlowModel(mesa.Model):
         self.station_table = STATION_TABLE
         self.itinerary_table = ITINERARY_TABLE
         
-        
         nodes = list(G.nodes)
-        # Cria os ids de forma sequencial, para que tenhamos ids de 1 a n_trens
-        train_ids = list(range(1, n_trens + 1))
+       
         
         # Retorna os valores de criação de instância para cada estação da STATION_TABLE
         station_namelist, station_ids, n_stations = get_station_info(STATION_TABLE) 
-       
+        
+        # Retorna os valores de criação de instância para cada estação da TRAIN_TABLE
+        train_namelist, train_ids, n_trains, itinerary =  get_train_info(TRAIN_TABLE)
         
         # Instanciamento de n agentes
-        train_agents = Train.create_agents(model=self, pos = None, n=n_trens, ID=train_ids)
+        train_agents = Train.create_agents(model=self, pos = None, n=n_trains, ID=train_ids, ITINERARY = itinerary,name = train_namelist)
         station_agents = Station.create_agents(model=self, pos = None, n=n_stations, ID = station_ids, name = station_namelist)
         
         # retorna todos os nós da rede.
@@ -247,15 +252,25 @@ class TrainFlowModel(mesa.Model):
        
         # lista apenas os nós que possuem estação
         station_nodes = [node for node, data in self.grid.G.nodes(data=True) if data.get('station_name') is not None]
+        
+        # lista apenas os nós que possuem estação
+        train_nodes = [node for node, data in self.grid.G.nodes(data=True) if data.get('init_train_number') is not None]
 
-        # aleatoriza a posição inicial dos trens entre os nós que têm estação
-        start_nodes_train = self.random.sample(station_nodes, len(train_agents))
-
-        # posiciona os trens
-        for agent, node in zip(train_agents, start_nodes_train):
-            self.grid.place_agent(agent, node)
-            agent.set_node_location(node)
-
+       # nodes_with_trains:
+        nodes_with_train = [
+           (node, data['train_name'])
+           for node, data in self.grid.G.nodes(data=True)
+           if data.get('train_name') is not None
+           ] 
+        
+        name_to_node = {name: int(node) for node, name in nodes_with_train}
+         
+        # posiciona cada agente de trem no nó inicial correto
+        for agent in train_agents:
+            node = name_to_node.get(agent.name)
+            if node is not None:
+                self.grid.place_agent(agent, node)
+                agent.set_node_location(node)
         
         
        # nodes_with_station: lista (node, station_name)
@@ -276,13 +291,7 @@ class TrainFlowModel(mesa.Model):
                 agent.set_node_location(node)
        
       
-        
-        # atribui itinerário inicial
-        for agent in train_agents :
-            agent.itinerary = "I_A"
-            
-        
-        # Finishthe initialization and create a self property to store the agents after init
+        # Finish the initialization and create a self property to store the agents after init
         self.Station_agents = station_agents
         self.Train_agents = train_agents
         
