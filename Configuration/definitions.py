@@ -28,6 +28,7 @@ class station_data:
     name: str
     ID: int
     time_stop: int
+    enable_stop: bool
     
 @dataclass
 class train_data:
@@ -41,24 +42,24 @@ class train_data:
 
 # Dicionário de estações
 STATION_TABLE = {
-    "S_A": station_data(name="S_A", ID=1, time_stop= round(5/STEP_SCALE)),
-    "S_B": station_data(name="S_B", ID=2, time_stop= round(4/STEP_SCALE)),
-    "S_C": station_data(name="S_C", ID=3, time_stop= round(2/STEP_SCALE)),
-    "S_D": station_data(name="S_D", ID=4, time_stop= round(2/STEP_SCALE)),
-    "S_E": station_data(name="S_E", ID=5, time_stop= round(1/STEP_SCALE)),
-    "S_F": station_data(name="S_F", ID=6, time_stop= round(1/STEP_SCALE)),
-    "S_G": station_data(name="S_G", ID=7, time_stop= round(1/STEP_SCALE)),
-    "S_H": station_data(name="S_H", ID=8, time_stop= round(1/STEP_SCALE)),
-    "S_I": station_data(name="S_I", ID=9, time_stop= round(1/STEP_SCALE)),
-    "S_J": station_data(name="S_J", ID=10,time_stop= round(1/STEP_SCALE)),
-    "S_K": station_data(name="S_K", ID=11,time_stop= round(1/STEP_SCALE)),
-    "S_L": station_data(name="S_L", ID=12,time_stop= round(1/STEP_SCALE)),
-    "S_M": station_data(name="S_M", ID=13,time_stop= round(1/STEP_SCALE)),
+    "S_A": station_data(name="S_A", ID=1, time_stop= round(5/STEP_SCALE),enable_stop = True),
+    "S_B": station_data(name="S_B", ID=2, time_stop= round(5/STEP_SCALE),enable_stop = True),
+    "S_C": station_data(name="S_C", ID=3, time_stop= round(5/STEP_SCALE),enable_stop = True),
+    "S_D": station_data(name="S_D", ID=4, time_stop= round(5/STEP_SCALE),enable_stop = True),
+    "S_E": station_data(name="S_E", ID=5, time_stop= round(1/STEP_SCALE),enable_stop = True),
+    "S_F": station_data(name="S_F", ID=6, time_stop= round(1/STEP_SCALE),enable_stop = True),
+    "S_G": station_data(name="S_G", ID=7, time_stop= round(1/STEP_SCALE),enable_stop = True),
+    "S_H": station_data(name="S_H", ID=8, time_stop= round(1/STEP_SCALE),enable_stop = True),
+    "S_I": station_data(name="S_I", ID=9, time_stop= round(1/STEP_SCALE),enable_stop = True),
+    "S_J": station_data(name="S_J", ID=10,time_stop= round(1/STEP_SCALE),enable_stop = True),
+    "S_K": station_data(name="S_K", ID=11,time_stop= round(1/STEP_SCALE),enable_stop = True),
+    "S_L": station_data(name="S_L", ID=12,time_stop= round(1/STEP_SCALE), enable_stop = True),
+    "S_M": station_data(name="S_M", ID=13,time_stop= round(1/STEP_SCALE),enable_stop = True),
 }
 
 TRAIN_TABLE = {
     "T_A": train_data(name="T_A", ID=1, itinerary="I_A", size = 30, init_velocity = round(18*STEP_SCALE)),
-    "T_B": train_data(name="T_B", ID=2, itinerary="I_B", size = 30, init_velocity = round(30*STEP_SCALE)),
+    "T_B": train_data(name="T_B", ID=2, itinerary="I_B", size = 30, init_velocity = round(5*STEP_SCALE)),
 }
 
 
@@ -107,8 +108,8 @@ def get_station_info(STATION_TABLE):
     station_ids = [station_obj.ID for station_obj in STATION_TABLE.values()]
     n_stations = len(STATION_TABLE)
     time_stop = [station_obj.time_stop for station_obj in STATION_TABLE.values()]
-    
-    return station_namelist, station_ids, n_stations, time_stop
+    enable_stop = [station_obj.enable_stop for station_obj in STATION_TABLE.values()]
+    return station_namelist, station_ids, n_stations, time_stop, enable_stop
 
 
 
