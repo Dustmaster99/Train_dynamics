@@ -59,7 +59,7 @@ TRAIN_TABLE = {
 # Dicionário de itinerários
 ITINERARY_TABLE = {
     "I_A": itinerary_data(path=["S_A", "S_B", "S_C", "S_D"], start_station="S_A", end_station="S_D"),
-    "I_B": itinerary_data(path=["S_D", "S_C", "S_B", "S_A"], start_station="S_D", end_station="S_A"),
+    "I_B": itinerary_data(path=["S_D", "S_B", "S_A"], start_station="S_D", end_station="S_A"),
     "I_C": itinerary_data(path=["S_A","S_B","S_C","S_D","S_E","S_F","S_G","S_H","S_I","S_J","S_K","S_L","S_M"], start_station="S_A", end_station="S_M"),
 }
 
