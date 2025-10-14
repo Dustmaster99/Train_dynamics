@@ -52,7 +52,7 @@ class Train(mesa.Agent):
     Agente que representa um trem.
     Ele "viaja" de nó em nó pelo grafo (o meio).
     """
-    def __init__(self,model,name,pos, ID, ITINERARY):
+    def __init__(self,model,name,pos, ID, ITINERARY, size):
         # Pass the parameters to the parent class.
         super().__init__(model)
         # Create the agent's attribute and set the initial values.
@@ -72,6 +72,8 @@ class Train(mesa.Agent):
         self.displacement = 0 # Displacement position in the current adge. ( All trains start at 0 )
         self.advance_to_next_node = False # bool variable to see if the object already moved pass the treshold of advancing to next node
     
+        self.crash = False
+        self.size = size
     # ===== Getters =====
     def get_location(self):
         """
@@ -241,10 +243,10 @@ class TrainFlowModel(mesa.Model):
         station_namelist, station_ids, n_stations = get_station_info(STATION_TABLE) 
         
         # Retorna os valores de criação de instância para cada estação da TRAIN_TABLE
-        train_namelist, train_ids, n_trains, itinerary =  get_train_info(TRAIN_TABLE)
+        train_namelist, train_ids, n_trains, itinerary, size_list =  get_train_info(TRAIN_TABLE)
         
         # Instanciamento de n agentes
-        train_agents = Train.create_agents(model=self, pos = None, n=n_trains, ID=train_ids, ITINERARY = itinerary,name = train_namelist)
+        train_agents = Train.create_agents(model=self, pos = None, n=n_trains, ID=train_ids, ITINERARY = itinerary,name = train_namelist, size = size_list)
         station_agents = Station.create_agents(model=self, pos = None, n=n_stations, ID = station_ids, name = station_namelist)
         
         # retorna todos os nós da rede.
@@ -295,14 +297,43 @@ class TrainFlowModel(mesa.Model):
         self.Station_agents = station_agents
         self.Train_agents = train_agents
         
+        
+        
+    def overlap(self, a1, a2):
+        """
+        Retorna True se os intervalos de deslocamento (considerando o tamanho)
+        se sobrepõem na mesma aresta.
+        """
+        half1 = a1.size / 2
+        half2 = a2.size / 2
+
+        # posição inicial e final de cada trem
+        start1 = a1.displacement - half1
+        end1 = a1.displacement + half1
+        start2 = a2.displacement - half2
+        end2 = a2.displacement + half2
+
+        # se há interseção entre os segmentos
+        return not (end1 < start2 or end2 < start1)
                 
-    def update_train_position(self,blocked_nodes):
+    def update_train_position(self, blocked_nodes):
         for a in self.Train_agents:
-            if a.node_target is not None and a.node_target not in blocked_nodes and a.advance_to_next_node == True:
+    
+            # 🚫 se o trem já colidiu, não se move mais
+            if a.crash == True:  
+                continue
+    
+            # ✅ só move se tiver destino, não estiver bloqueado, e puder avançar
+            if (
+                a.node_target is not None
+                and a.node_target not in blocked_nodes
+                and a.advance_to_next_node is True
+            ):
                 a.last_node = a.node
-                self.grid.move_agent(a, a.node_target) # Move o agente para a posição target.
-                a.node = a.node_target          # atualiza nó atual
-                a.set_advance_to_next_node(False) # atualiza o valor de advance to next node, para false
+                self.grid.move_agent(a, a.node_target)  # move o agente para o nó destino
+                a.node = a.node_target
+                a.set_advance_to_next_node(False)
+
 
     def get_blocked_positions(self,agents_list):
         
@@ -316,6 +347,44 @@ class TrainFlowModel(mesa.Model):
                 all_targets.append(target)
         return blocked_targets
     
+    def detect_collisions(self, agents_list):
+        """
+        Marca self.crash = True para trens que colidem e mantém o estado para sempre.
+        Considera:
+        - colisão no mesmo nó;
+        - sobreposição na mesma aresta (mesma direção);
+        - cruzamento em direções opostas (A->B e B->A);
+        - offset físico baseado em self.size (centro do trem).
+        """
+        
+        for i in range(len(agents_list)):
+            a1 = agents_list[i]
+            for j in range(i + 1, len(agents_list)):
+                a2 = agents_list[j]
+    
+                # Se ambos já colidiram, não precisa verificar de novo
+                if a1.crash and a2.crash:
+                    continue
+    
+                # --- (1) colisão no mesmo nó ---
+                if a1.node == a2.node:
+                    a1.crash = a2.crash = True
+                    continue
+    
+                # --- (2) mesma aresta (mesma direção) ---
+                if a1.node == a2.node and a1.node_target == a2.node_target:
+                    if self.overlap(a1, a2):
+                        a1.crash = a2.crash = True
+                        continue
+    
+                # --- (3) cruzamento oposto (A->B e B->A) ---
+                if a1.node == a2.node_target and a1.node_target == a2.node:
+                    if self.overlap(a1, a2):
+                        a1.crash = a2.crash = True
+                        continue
+
+
+
 
     def step(self):
         
@@ -327,7 +396,11 @@ class TrainFlowModel(mesa.Model):
         for a in self.Train_agents: 
             a.calculate_target_node()
         
-        blocked_nodes = self.get_blocked_positions(self.Train_agents)
+        blocked_nodes = []
+        #blocked_nodes = self.get_blocked_positions(self.Train_agents)
+        
+        self.detect_collisions(self.Train_agents)
+        
         # Update all trains postions
         self.update_train_position(blocked_nodes)
         
