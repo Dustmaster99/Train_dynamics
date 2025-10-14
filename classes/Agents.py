@@ -100,6 +100,7 @@ class Train(mesa.Agent):
     
     def set_advance_to_next_node(self, value: bool):
         self.advance_to_next_node = value
+    
         
     # ===== Outros métodos =====
     
@@ -171,7 +172,7 @@ class Train(mesa.Agent):
             
             if self.displacement >= total_distance:
                 self.set_advance_to_next_node(True)
-                self.displacement = 0
+                self.displacement = self.displacement % total_distance
                 if DEBUG:
                     print(f"Train {self.trainID}: ready to advance to {self.node_target}")
             else:
@@ -425,15 +426,15 @@ class TrainFlowModel(mesa.Model):
         for a in self.Train_agents: 
             a.calculate_target_node()
         
+        for a in self.Train_agents: 
+            a.calculate_displacement_to_target()
+        
         blocked_nodes = []
         #blocked_nodes = self.get_blocked_positions(self.Train_agents)
-        
         self.detect_collisions(self.Train_agents)
-        
         # Update all trains postions
         self.update_train_position(blocked_nodes)
         
-        for a in self.Train_agents: 
-            a.calculate_displacement_to_target()
+        
 
 
