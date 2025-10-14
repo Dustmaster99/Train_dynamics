@@ -29,6 +29,7 @@ class train_data:
     name: str
     ID: int
     itinerary:str
+    size: int
     
 
 
@@ -50,8 +51,8 @@ STATION_TABLE = {
 }
 
 TRAIN_TABLE = {
-    "T_A": train_data(name="T_A", ID=1, itinerary="I_A"),
-    "T_B": train_data(name="T_B", ID=2, itinerary="I_B"),
+    "T_A": train_data(name="T_A", ID=1, itinerary="I_A", size = 30),
+    "T_B": train_data(name="T_B", ID=2, itinerary="I_B", size = 30),
 }
 
 
@@ -112,5 +113,6 @@ def get_train_info(TRAIN_TABLE):
     train_ids = [train_obj.ID for train_obj in TRAIN_TABLE.values()]
     n_trains = len(TRAIN_TABLE)
     itinerary_list = [train_obj.itinerary for train_obj in TRAIN_TABLE.values()]
+    size = [train_obj.size for train_obj in TRAIN_TABLE.values()]
     
-    return train_namelist, train_ids, n_trains,itinerary_list
+    return train_namelist, train_ids, n_trains,itinerary_list, size
