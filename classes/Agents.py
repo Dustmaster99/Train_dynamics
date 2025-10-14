@@ -67,7 +67,7 @@ class Train(mesa.Agent):
         self.node_target = None
        
         self.last_node = None
-        self.velocity = 70 # velocity in m/s
+        self.velocity = 18 # velocity in m/s
         
         self.displacement = 0 # Displacement position in the current adge. ( All trains start at 0 )
         self.advance_to_next_node = False # bool variable to see if the object already moved pass the treshold of advancing to next node
@@ -315,6 +315,31 @@ class TrainFlowModel(mesa.Model):
 
         # se há interseção entre os segmentos
         return not (end1 < start2 or end2 < start1)
+    
+    def reverse_overlap(self,a1, a2, edge_weight):
+        """
+        Verifica se dois trens se sobrepõem numa mesma aresta.
+        
+        a1, a2: objetos trem com atributos displacement e size
+        edge_weight: peso/length da aresta
+        """
+    
+        # Calcula intervalo físico de a1
+        half1 = a1.size / 2
+        start1 = a1.displacement - half1
+        end1 = a1.displacement + half1
+    
+        # Calcula intervalo físico de a2, invertendo deslocamento se necessário
+        half2 = a2.size / 2
+        # assume que a2 está indo na direção oposta
+        start2 = edge_weight - a2.displacement - half2
+        end2 = edge_weight - a2.displacement + half2
+    
+        # Verifica sobreposição
+        return not (end1 < start2 or end2 < start1)
+
+    
+    
                 
     def update_train_position(self, blocked_nodes):
         for a in self.Train_agents:
@@ -369,18 +394,22 @@ class TrainFlowModel(mesa.Model):
                 # --- (1) colisão no mesmo nó ---
                 if a1.node == a2.node:
                     a1.crash = a2.crash = True
+                    a1.velocity = a2.velocity = 0
                     continue
     
                 # --- (2) mesma aresta (mesma direção) ---
                 if a1.node == a2.node and a1.node_target == a2.node_target:
                     if self.overlap(a1, a2):
                         a1.crash = a2.crash = True
+                        a1.velocity = a2.velocity = 0
                         continue
     
                 # --- (3) cruzamento oposto (A->B e B->A) ---
                 if a1.node == a2.node_target and a1.node_target == a2.node:
-                    if self.overlap(a1, a2):
+                    weight = self.grid.G.edges[a1.node, a1.node_target]['weight']
+                    if self.reverse_overlap(a1, a2, weight):
                         a1.crash = a2.crash = True
+                        a1.velocity = a2.velocity = 0
                         continue
 
 
