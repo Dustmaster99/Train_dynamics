@@ -76,7 +76,7 @@ station_nodes,train_nodes = extrair_diagonal_principal(adj_matrix)
 
 model = TrainFlowModel(edges_descrition, station_nodes, train_nodes)
 
-n_steps = 30
+n_steps =120
 
 for t in range(n_steps):
     model.step()
