@@ -68,8 +68,8 @@ def plot_network_state(G, time):
     """
     Plota o grafo de forma visual e organizada:
     - Estações com formato quadrado e cor laranja
-    - Trens com formato circular e cor verde
-    - Nomes das estações e IDs dos trens
+    - Trens com formato circular e cor verde, exceto trens com crash = True (vermelho)
+    - Nomes das estações e IDs/nome+displacement dos trens
     - Pesos das arestas
     - Ignora elementos None nos nós
     """
@@ -78,7 +78,7 @@ def plot_network_state(G, time):
     # Desenha nós por tipo de agente
     for n in G.nodes():
         if n is None:
-            continue  # ignora elementos None
+            continue
         agents = G.nodes[n].get('agent', [])
         if agents:
             station_present = any(type(agent).__name__ == "Station" for agent in agents)
@@ -111,7 +111,7 @@ def plot_network_state(G, time):
     nx.draw_networkx_edges(G, pos, width=2, alpha=0.7, edge_color='gray')
     nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_color='red')
 
-    # IDs dos trens sobrepostos
+    # Desenha os trens com labels
     for n, (x, y) in pos.items():
         if n is None:
             continue
@@ -119,15 +119,20 @@ def plot_network_state(G, time):
         y_offset = 0.1
         for agent in agents:
             if type(agent).__name__ == "Train":
-                train_id = getattr(agent,'trainID','N/A')
-                plt.text(x, y + y_offset, f"Train: {train_id}", fontsize=9,
-                         fontweight='bold', color='green',
-                         horizontalalignment='center')
+                # Define cor: vermelho se crash=True, verde caso contrário
+                color = 'red' if getattr(agent, 'crash', False) else 'green'
+                # Label: Nome/ID + displacement
+                name = getattr(agent, 'name', getattr(agent,'trainID','N/A'))
+                displacement = getattr(agent, 'displacement', 0)
+                label = f"{name} ({displacement:.1f})"
+                plt.text(x, y + y_offset, label, fontsize=9, fontweight='bold',
+                         color=color, horizontalalignment='center')
                 y_offset += 0.1
 
     plt.title(f"Network State - Step {time}")
     plt.axis('off')
     plt.show()
+
 
 
 
