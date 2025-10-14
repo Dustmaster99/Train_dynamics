@@ -12,6 +12,10 @@ from dataclasses import dataclass
 from typing import List
 
 
+# Time Scale seconds
+STEP_SCALE = 1
+
+
 @dataclass
 class itinerary_data:
     path: List[str]        # lista de nomes de estações
@@ -23,6 +27,7 @@ class itinerary_data:
 class station_data:
     name: str
     ID: int
+    time_stop: int
     
 @dataclass
 class train_data:
@@ -30,29 +35,30 @@ class train_data:
     ID: int
     itinerary:str
     size: int
+    init_velocity : int
     
 
 
 # Dicionário de estações
 STATION_TABLE = {
-    "S_A": station_data(name="S_A", ID=1),
-    "S_B": station_data(name="S_B", ID=2),
-    "S_C": station_data(name="S_C", ID=3),
-    "S_D": station_data(name="S_D", ID=4),
-    "S_E": station_data(name="S_E", ID=5),
-    "S_F": station_data(name="S_F", ID=6),
-    "S_G": station_data(name="S_G", ID=7),
-    "S_H": station_data(name="S_H", ID=8),
-    "S_I": station_data(name="S_I", ID=9),
-    "S_J": station_data(name="S_J", ID=10),
-    "S_K": station_data(name="S_K", ID=11),
-    "S_L": station_data(name="S_L", ID=12),
-    "S_M": station_data(name="S_M", ID=13),
+    "S_A": station_data(name="S_A", ID=1, time_stop= round(5/STEP_SCALE)),
+    "S_B": station_data(name="S_B", ID=2, time_stop= round(4/STEP_SCALE)),
+    "S_C": station_data(name="S_C", ID=3, time_stop= round(2/STEP_SCALE)),
+    "S_D": station_data(name="S_D", ID=4, time_stop= round(2/STEP_SCALE)),
+    "S_E": station_data(name="S_E", ID=5, time_stop= round(1/STEP_SCALE)),
+    "S_F": station_data(name="S_F", ID=6, time_stop= round(1/STEP_SCALE)),
+    "S_G": station_data(name="S_G", ID=7, time_stop= round(1/STEP_SCALE)),
+    "S_H": station_data(name="S_H", ID=8, time_stop= round(1/STEP_SCALE)),
+    "S_I": station_data(name="S_I", ID=9, time_stop= round(1/STEP_SCALE)),
+    "S_J": station_data(name="S_J", ID=10,time_stop= round(1/STEP_SCALE)),
+    "S_K": station_data(name="S_K", ID=11,time_stop= round(1/STEP_SCALE)),
+    "S_L": station_data(name="S_L", ID=12,time_stop= round(1/STEP_SCALE)),
+    "S_M": station_data(name="S_M", ID=13,time_stop= round(1/STEP_SCALE)),
 }
 
 TRAIN_TABLE = {
-    "T_A": train_data(name="T_A", ID=1, itinerary="I_A", size = 30),
-    "T_B": train_data(name="T_B", ID=2, itinerary="I_B", size = 30),
+    "T_A": train_data(name="T_A", ID=1, itinerary="I_A", size = 30, init_velocity = round(18*STEP_SCALE)),
+    "T_B": train_data(name="T_B", ID=2, itinerary="I_B", size = 30, init_velocity = round(30*STEP_SCALE)),
 }
 
 
@@ -100,8 +106,9 @@ def get_station_info(STATION_TABLE):
     station_namelist = [station_obj.name for station_obj in STATION_TABLE.values()]
     station_ids = [station_obj.ID for station_obj in STATION_TABLE.values()]
     n_stations = len(STATION_TABLE)
+    time_stop = [station_obj.time_stop for station_obj in STATION_TABLE.values()]
     
-    return station_namelist, station_ids, n_stations
+    return station_namelist, station_ids, n_stations, time_stop
 
 
 
@@ -114,5 +121,6 @@ def get_train_info(TRAIN_TABLE):
     n_trains = len(TRAIN_TABLE)
     itinerary_list = [train_obj.itinerary for train_obj in TRAIN_TABLE.values()]
     size = [train_obj.size for train_obj in TRAIN_TABLE.values()]
+    init_velocity  = [train_obj.init_velocity for train_obj in TRAIN_TABLE.values()]
     
-    return train_namelist, train_ids, n_trains,itinerary_list, size
+    return train_namelist, train_ids, n_trains,itinerary_list, size, init_velocity

@@ -21,7 +21,7 @@ from Configuration.definitions import *
 DEBUG = False
 
 class Station(mesa.Agent):
-    def __init__(self,model, pos, ID, name):
+    def __init__(self,model, pos, ID, name, time_stop):
         # Pass the parameters to the parent class.
         super().__init__(model)
         
@@ -30,6 +30,7 @@ class Station(mesa.Agent):
         self.stationID = ID
         self.node = pos
         self.itineraryTable = ITINERARY_TABLE
+        self.stop_time = time_stop
 
     def get_next_mission(self, itinerary):
         
@@ -52,7 +53,7 @@ class Train(mesa.Agent):
     Agente que representa um trem.
     Ele "viaja" de nó em nó pelo grafo (o meio).
     """
-    def __init__(self,model,name,pos, ID, ITINERARY, size):
+    def __init__(self,model,name,pos, ID, ITINERARY, size, init_velocity):
         # Pass the parameters to the parent class.
         super().__init__(model)
         # Create the agent's attribute and set the initial values.
@@ -67,7 +68,7 @@ class Train(mesa.Agent):
         self.node_target = None
        
         self.last_node = None
-        self.velocity = 18 # velocity in m/s
+        self.velocity = init_velocity # velocity in m/s
         
         self.displacement = 0 # Displacement position in the current adge. ( All trains start at 0 )
         self.advance_to_next_node = False # bool variable to see if the object already moved pass the treshold of advancing to next node
@@ -241,14 +242,14 @@ class TrainFlowModel(mesa.Model):
        
         
         # Retorna os valores de criação de instância para cada estação da STATION_TABLE
-        station_namelist, station_ids, n_stations = get_station_info(STATION_TABLE) 
+        station_namelist, station_ids, n_stations, time_stop_list = get_station_info(STATION_TABLE) 
         
         # Retorna os valores de criação de instância para cada estação da TRAIN_TABLE
-        train_namelist, train_ids, n_trains, itinerary, size_list =  get_train_info(TRAIN_TABLE)
+        train_namelist, train_ids, n_trains, itinerary, size_list, init_velocity_list =  get_train_info(TRAIN_TABLE)
         
         # Instanciamento de n agentes
-        train_agents = Train.create_agents(model=self, pos = None, n=n_trains, ID=train_ids, ITINERARY = itinerary,name = train_namelist, size = size_list)
-        station_agents = Station.create_agents(model=self, pos = None, n=n_stations, ID = station_ids, name = station_namelist)
+        train_agents = Train.create_agents(model=self, pos = None, n=n_trains, ID=train_ids, ITINERARY = itinerary, name = train_namelist, size = size_list, init_velocity = init_velocity_list)
+        station_agents = Station.create_agents(model=self, pos = None, n=n_stations, ID = station_ids, name = station_namelist, time_stop = time_stop_list)
         
         # retorna todos os nós da rede.
         nodes = list(self.grid.G.nodes)
