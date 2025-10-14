@@ -21,7 +21,7 @@ from Configuration.definitions import *
 DEBUG = False
 
 class Station(mesa.Agent):
-    def __init__(self,model, pos, ID, name, time_stop):
+    def __init__(self,model, pos, ID, name, time_stop, enable_stop):
         # Pass the parameters to the parent class.
         super().__init__(model)
         
@@ -31,6 +31,7 @@ class Station(mesa.Agent):
         self.node = pos
         self.itineraryTable = ITINERARY_TABLE
         self.stop_time = time_stop
+        self.enable_stop = enable_stop
 
     def get_next_mission(self, itinerary):
         
@@ -40,7 +41,20 @@ class Station(mesa.Agent):
         else: 
             return next_mission  # sempre retorna int
     
+    def set_stop_to_train(self, train_instance: "Train") -> None:
+        if(self.enable_stop == True):
+            train_instance.set_stop_steps(self.stop_time)
+            # set the displacement to 0, to say that the train stopped at the station 
+            train_instance.set_displacement(0)
+            
+    def remove_step(self, train_instance: "Train") -> None:
+        train_instance.removestep()
+            
+    def release_train_from_stop(self, train_instance: "Train") -> None:
+        if(train_instance.OnStop == True):
+            train_instance.release_from_stop()
     
+   
     def update_grid(self):
         ''' do nothing for now, but is dedicated to update the grid, duo to topology changes in the middle of operation by random events'''
     
@@ -68,6 +82,7 @@ class Train(mesa.Agent):
         self.node_target = None
        
         self.last_node = None
+        self.init_velocity = init_velocity
         self.velocity = init_velocity # velocity in m/s
         
         self.displacement = 0 # Displacement position in the current adge. ( All trains start at 0 )
@@ -75,6 +90,12 @@ class Train(mesa.Agent):
     
         self.crash = False
         self.size = size
+        
+        self.stop_steps = 0;
+        self.OnStop = False
+        
+        self.just_arrived = False  
+        
     # ===== Getters =====
     def get_location(self):
         """
@@ -102,6 +123,23 @@ class Train(mesa.Agent):
     def set_advance_to_next_node(self, value: bool):
         self.advance_to_next_node = value
     
+    def set_stop_steps(self, steps):
+        self.stop_steps = steps
+        self.velocity = 0
+        self.OnStop = True
+        
+    def release_from_stop(self):
+        self.velocity = self.init_velocity
+        self.OnStop = False
+        
+    def removestep(self):
+        if self.stop_steps > 0:
+            self.stop_steps -= 1
+        
+        
+        
+    def set_displacement(self, displacement):
+        self.displacement = displacement
         
     # ===== Outros métodos =====
     
@@ -242,14 +280,14 @@ class TrainFlowModel(mesa.Model):
        
         
         # Retorna os valores de criação de instância para cada estação da STATION_TABLE
-        station_namelist, station_ids, n_stations, time_stop_list = get_station_info(STATION_TABLE) 
+        station_namelist, station_ids, n_stations, time_stop_list,enable_stop_list = get_station_info(STATION_TABLE) 
         
         # Retorna os valores de criação de instância para cada estação da TRAIN_TABLE
         train_namelist, train_ids, n_trains, itinerary, size_list, init_velocity_list =  get_train_info(TRAIN_TABLE)
         
         # Instanciamento de n agentes
         train_agents = Train.create_agents(model=self, pos = None, n=n_trains, ID=train_ids, ITINERARY = itinerary, name = train_namelist, size = size_list, init_velocity = init_velocity_list)
-        station_agents = Station.create_agents(model=self, pos = None, n=n_stations, ID = station_ids, name = station_namelist, time_stop = time_stop_list)
+        station_agents = Station.create_agents(model=self, pos = None, n=n_stations, ID = station_ids, name = station_namelist, time_stop = time_stop_list, enable_stop = enable_stop_list)
         
         # retorna todos os nós da rede.
         nodes = list(self.grid.G.nodes)
@@ -360,6 +398,7 @@ class TrainFlowModel(mesa.Model):
                 self.grid.move_agent(a, a.node_target)  # move o agente para o nó destino
                 a.node = a.node_target
                 a.set_advance_to_next_node(False)
+                a.just_arrived = True
 
 
     def get_blocked_positions(self,agents_list):
@@ -428,13 +467,30 @@ class TrainFlowModel(mesa.Model):
             a.calculate_target_node()
         
         for a in self.Train_agents: 
-            a.calculate_displacement_to_target()
-        
+            if not a.OnStop:
+                a.calculate_displacement_to_target()
+            
         blocked_nodes = []
         #blocked_nodes = self.get_blocked_positions(self.Train_agents)
         self.detect_collisions(self.Train_agents)
         # Update all trains postions
         self.update_train_position(blocked_nodes)
+        
+        for s in self.Station_agents:
+            trains_at_station = [
+                a for a in self.Train_agents if a.node == s.node
+                ]
+            for a in trains_at_station:
+                if not a.OnStop and a.just_arrived:
+                    s.set_stop_to_train(a)
+                    a.just_arrived = False  # reset
+                elif a.OnStop:
+                    s.remove_step(a)
+                    if a.stop_steps <= 0:
+                        s.release_train_from_stop(a)
+
+                
+        
         
         
 
