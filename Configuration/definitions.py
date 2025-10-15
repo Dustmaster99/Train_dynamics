@@ -58,14 +58,14 @@ STATION_TABLE = {
 }
 
 TRAIN_TABLE = {
-    "T_A": train_data(name="T_A", ID=1, itinerary="I_A", size = 30, init_velocity = round(18*STEP_SCALE)),
-    "T_B": train_data(name="T_B", ID=2, itinerary="I_B", size = 30, init_velocity = round(5*STEP_SCALE)),
+    "T_A": train_data(name="T_A", ID=1, itinerary="I_A", size = 10, init_velocity = round(18*STEP_SCALE)),
+    "T_B": train_data(name="T_B", ID=2, itinerary="I_B", size = 10, init_velocity = round(5*STEP_SCALE)),
 }
 
 
 # Dicionário de itinerários
 ITINERARY_TABLE = {
-    "I_A": itinerary_data(path=["S_A", "S_B", "S_C", "S_D"], start_station="S_A", end_station="S_D"),
+    "I_A": itinerary_data(path=["S_A", "S_B","S_D"], start_station="S_A", end_station="S_D"),
     "I_B": itinerary_data(path=["S_D", "S_B", "S_A"], start_station="S_D", end_station="S_A"),
     "I_C": itinerary_data(path=["S_A","S_B","S_C","S_D","S_E","S_F","S_G","S_H","S_I","S_J","S_K","S_L","S_M"], start_station="S_A", end_station="S_M"),
 }
