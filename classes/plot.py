@@ -64,64 +64,74 @@ def print_network_state(G, time):
     print(f"{'='*100}\n")
 
 
-def plot_network_state(G, time):
+def plot_network_state(G_original, G_runtime, time):
     """
-    Plota o grafo de forma visual e organizada:
-    - Estações com formato quadrado e cor laranja
-    - Trens com formato circular e cor verde, exceto trens com crash = True (vermelho)
-    - Nomes das estações e IDs/nome+displacement dos trens
+    Plota o grafo mostrando:
+    - Estações (quadrados laranja)
+    - Trens (círculos verdes ou vermelhos se crash=True)
+    - Arestas bloqueadas (removidas em G_runtime) em vermelho tracejado
     - Pesos das arestas
-    - Ignora elementos None nos nós
     """
-    pos = nx.spring_layout(G, seed=42)
+    pos = nx.spring_layout(G_original, seed=42)
 
-    # Desenha nós por tipo de agente
-    for n in G.nodes():
+    # === (1) Identificar arestas bloqueadas ===
+    edges_original = set(G_original.edges())
+    edges_runtime = set(G_runtime.edges())
+    blocked_edges = edges_original - edges_runtime
+    active_edges = edges_runtime
+
+    # === (2) Nós ===
+    for n in G_original.nodes():
         if n is None:
             continue
-        agents = G.nodes[n].get('agent', [])
+        agents = G_original.nodes[n].get('agent', [])
         if agents:
             station_present = any(type(agent).__name__ == "Station" for agent in agents)
             if station_present:
-                nx.draw_networkx_nodes(G, pos, nodelist=[n], node_color='orange', node_shape='s', node_size=900)
+                nx.draw_networkx_nodes(G_original, pos, nodelist=[n], node_color='orange', node_shape='s', node_size=900)
             else:
-                nx.draw_networkx_nodes(G, pos, nodelist=[n], node_color='skyblue', node_shape='o', node_size=800)
+                nx.draw_networkx_nodes(G_original, pos, nodelist=[n], node_color='skyblue', node_shape='o', node_size=800)
         else:
-            nx.draw_networkx_nodes(G, pos, nodelist=[n], node_color='lightgray', node_shape='o', node_size=600)
+            nx.draw_networkx_nodes(G_original, pos, nodelist=[n], node_color='lightgray', node_shape='o', node_size=600)
 
-    # Labels dos nós
+    # === (3) Labels dos nós ===
     labels_nodes = {}
-    for n in G.nodes():
+    for n in G_original.nodes():
         if n is None:
             continue
         label = str(n)
-        agents = G.nodes[n].get('agent', [])
+        agents = G_original.nodes[n].get('agent', [])
         for agent in agents:
             if type(agent).__name__ == "Station":
                 label += f"\nStation: {getattr(agent,'name','')}"
         labels_nodes[n] = label
-    nx.draw_networkx_labels(G, pos, labels=labels_nodes, font_size=10)
+    nx.draw_networkx_labels(G_original, pos, labels=labels_nodes, font_size=10)
 
-    # Arestas e pesos
+    # === (4) Desenha arestas ===
+    nx.draw_networkx_edges(G_original, pos, edgelist=list(active_edges),
+                           width=2, alpha=0.6, edge_color='gray')
+
+    if blocked_edges:
+        nx.draw_networkx_edges(G_original, pos, edgelist=list(blocked_edges),
+                               width=3, alpha=0.9, edge_color='red', style='dashed')
+
+    # === (5) Labels dos pesos ===
     edge_labels = {}
-    for u, v, data in G.edges(data=True):
+    for u, v, data in G_original.edges(data=True):
         if u is None or v is None:
             continue
         edge_labels[(u, v)] = f"{data.get('weight','')}"
-    nx.draw_networkx_edges(G, pos, width=2, alpha=0.7, edge_color='gray')
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_color='red')
+    nx.draw_networkx_edge_labels(G_original, pos, edge_labels=edge_labels, font_color='black', font_size=8)
 
-    # Desenha os trens com labels
+    # === (6) Trens e labels ===
     for n, (x, y) in pos.items():
         if n is None:
             continue
-        agents = G.nodes[n].get('agent', [])
+        agents = G_original.nodes[n].get('agent', [])
         y_offset = 0.1
         for agent in agents:
             if type(agent).__name__ == "Train":
-                # Define cor: vermelho se crash=True, verde caso contrário
                 color = 'red' if getattr(agent, 'crash', False) else 'green'
-                # Label: Nome/ID + displacement
                 name = getattr(agent, 'name', getattr(agent,'trainID','N/A'))
                 displacement = getattr(agent, 'displacement', 0)
                 label = f"{name} ({displacement:.1f})"
@@ -129,8 +139,11 @@ def plot_network_state(G, time):
                          color=color, horizontalalignment='center')
                 y_offset += 0.1
 
-    plt.title(f"Network State - Step {time}")
+    # === (7) Título e layout ===
+    plt.title(f"Network State - Step {time}\n"
+              f"Blocked edges: {len(blocked_edges)}", fontsize=12)
     plt.axis('off')
+    plt.tight_layout()
     plt.show()
 
 

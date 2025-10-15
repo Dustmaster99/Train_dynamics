@@ -17,6 +17,7 @@ from mesa.space import NetworkGrid
 import networkx as nx
 import random
 from Configuration.definitions import *
+import copy
 
 DEBUG = False
 
@@ -247,6 +248,22 @@ class Train(mesa.Agent):
         if target_station_agent is not None:
             # Atualiza next_mission com o nó da rede
             self.next_mission = target_station_agent.node
+    
+    def update_network_reference(self, G_reference):
+        """
+        Atualiza a referência da propriedade self.network para o grafo fornecido.
+        Assim, o trem sempre enxerga o estado atual das vias e bloqueios.
+    
+        Parâmetros:
+            G_reference : networkx.Graph
+                O grafo que será usado como rede para o trem.
+        """
+        if G_reference is not None:
+            # Atualiza a referência diretamente (sem copiar, para refletir as mudanças em tempo real)
+            self.network = G_reference
+        else:
+            print(f"[Warning] Grafo fornecido é None para o trem {getattr(self, 'trainID', 'N/A')}.")
+
             
        
 class TrainFlowModel(mesa.Model):
@@ -262,6 +279,7 @@ class TrainFlowModel(mesa.Model):
         # cria grafo determinado pela matrix de adjacências adj_matrix
         G = nx.from_numpy_array(np.array(adj_matrix))
         
+        
         # concatena os nomes das estações aos nós pertencentes das mesmas
         for i, station_name in enumerate(station_nodes_list ):
             G.nodes[i]['station_name'] = station_name
@@ -272,6 +290,7 @@ class TrainFlowModel(mesa.Model):
         
         
         # Importa informações de topologia :
+        self.G_full = G
         self.grid = NetworkGrid(G)
         self.station_table = STATION_TABLE
         self.itinerary_table = ITINERARY_TABLE
@@ -432,8 +451,8 @@ class TrainFlowModel(mesa.Model):
                 if a1.crash and a2.crash:
                     continue
     
-                # --- (1) colisão no mesmo nó ---
-                if a1.node == a2.node:
+                # (1) colisão no mesmo nó, somente se ambos estão parados no nó
+                if a1.node == a2.node and a1.node_target is None and a2.node_target is None:
                     a1.crash = a2.crash = True
                     a1.velocity = a2.velocity = 0
                     continue
@@ -453,43 +472,131 @@ class TrainFlowModel(mesa.Model):
                         a1.velocity = a2.velocity = 0
                         continue
 
+  
+
+    def update_individual_networks(self):
+        """
+        Cria grafos individuais para cada trem:
+        - Cada trem vê todas as arestas exceto as ocupadas por outros trens,
+          mantendo sua própria aresta.
+        """
+        for a in self.Train_agents:
+            # --- 1. Cria uma cópia do grafo base ---
+            G_personal = self.G_full.copy()
+    
+            # --- 2. Remove as arestas ocupadas por outros trens ---
+            for b in self.Train_agents:
+                if b == a:
+                    continue  # ignora o próprio trem
+                
+                edge = (b.node, b.node_target)
+                rev_edge = (b.node_target, b.node)
+                
+                # ignora trens sem destino
+                if b.node is None or b.node_target is None:
+                    continue
+                
+                # --- Não remove se for a mesma aresta do trem 'a' ---
+                if (edge == (a.node, a.node_target)) or (rev_edge == (a.node, a.node_target)):
+                    continue
+                
+                if G_personal.has_edge(*edge):
+                    G_personal.remove_edge(*edge)
+                elif G_personal.has_edge(*rev_edge):
+                    G_personal.remove_edge(*rev_edge)
+    
+            # --- 3. Atualiza a visão do trem ---
+            a.update_network_reference(G_personal)
 
 
+            
+            
+    def update_runtime_graph(self):
+        """
+        Cria uma cópia do grafo original e remove as arestas atualmente ocupadas
+        pelos trens em movimento (ou seja, trens que estão efetivamente entre dois nós).
+        Trens parados em estação (OnStop=True) não bloqueiam as vias.
+        """
+        # Faz uma cópia profunda do grafo original
+        self.G_runtime = copy.deepcopy(self.grid.G)
+    
+        removed_edges = []
+    
+        for train in self.Train_agents:
+            # 🚫 Ignora trens parados na estação ou sem destino ativo
+            if train.OnStop or train.node_target is None:
+                continue
+    
+            edge = (train.node, train.node_target)
+            rev_edge = (train.node_target, train.node)
+    
+            # Remove a aresta correspondente à via que o trem ocupa
+            if self.G_runtime.has_edge(*edge):
+                self.G_runtime.remove_edge(*edge)
+                removed_edges.append(edge)
+            elif self.G_runtime.has_edge(*rev_edge):
+                self.G_runtime.remove_edge(*rev_edge)
+                removed_edges.append(rev_edge)
 
+    
+       
     def step(self):
         
         print("\n=== STEP ===")
+        
+        # (1) Cada trem define sua próxima missão (ex: destino, itinerário, etc.)
         for a in self.Train_agents:     
             print(f"Train {a.trainID}: displacement={a.displacement}, advance={a.advance_to_next_node}")
             a.set_next_mission()
-        # All agents calculate their target of movement
+        
+        # (2) Cada trem calcula o próximo nó de destino (node_target)
         for a in self.Train_agents: 
             a.calculate_target_node()
         
+        # (3) Se o trem não estiver parado em estação, calcula o deslocamento
+        # até o próximo nó (displacement → progresso dentro da aresta)
         for a in self.Train_agents: 
             if not a.OnStop:
                 a.calculate_displacement_to_target()
             
+        # (4) Lista de nós bloqueados (vazia neste caso, mas pode ser usada futuramente)
         blocked_nodes = []
-        #blocked_nodes = self.get_blocked_positions(self.Train_agents)
+        # blocked_nodes = self.get_blocked_positions(self.Train_agents)
+    
+        # (5) Detecta colisões entre trens:
+        # - No mesmo nó
+        # - Na mesma aresta (mesma direção)
+        # - Em arestas opostas (colisão frontal)
         self.detect_collisions(self.Train_agents)
-        # Update all trains postions
+    
+        # (6) Atualiza a posição dos trens no grafo,
+        # movendo-os para o nó de destino se possível
         self.update_train_position(blocked_nodes)
         
+        # (7) Gerencia interação entre estações e trens:
+        # aplica e libera paradas conforme regras de tempo de parada
         for s in self.Station_agents:
+            # Lista trens atualmente localizados na estação s
             trains_at_station = [
                 a for a in self.Train_agents if a.node == s.node
-                ]
+            ]
             for a in trains_at_station:
+                # Se o trem acabou de chegar e pode parar, aplica parada
                 if not a.OnStop and a.just_arrived:
                     s.set_stop_to_train(a)
-                    a.just_arrived = False  # reset
+                    a.just_arrived = False  # reseta flag
+                # Se o trem está parado, decrementa tempo de parada
+                # e libera quando o tempo acabar
                 elif a.OnStop:
                     s.remove_step(a)
                     if a.stop_steps <= 0:
                         s.release_train_from_stop(a)
-
-                
+                        
+        # (8) Atualiza o grafo dinâmico (G_runtime),
+        # removendo arestas atualmente ocupadas por trens em movimento
+        self.update_individual_networks()
+        self.update_runtime_graph()
+    
         
         
         
