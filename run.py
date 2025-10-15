@@ -62,7 +62,7 @@ adj_matrix = [
     [0, 0, 0, 0, 0, 100, 100, 100, 0, 0],   # nó 4 → nó 5, 6 e 7
     [0, 0, 0, 0, 0, 0, 0, 0, 100, 0],   # nó 5 → nó 8
     [0, 0, 0, 0, 0, 0, 0, 0, 100, 100], # nó 6 → nós 8 e 9
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 100],   # nó 7 → nó 9
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 80],   # nó 7 → nó 9
     [0, 0, 0, 0, 0, 0, 0, 0,["S_C",None], 0],   # nó 8 → (sem conexões de saída)
     [0, 0, 0, 0, 0, 0, 0, 0, 0, ["S_D","T_B"]]      # nó 9 (sem conexões de saída)
 ]
@@ -81,7 +81,7 @@ n_steps =120
 for t in range(n_steps):
     model.step()
     plot.print_network_state(model.grid.G,t) 
-    plot.plot_network_state(model.grid.G,t)
+    plot.plot_network_state(model.grid.G, model.G_runtime, t)
     plot.plot_network_state_pyvis(model.grid.G,t)
 
               
