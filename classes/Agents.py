@@ -512,35 +512,35 @@ class TrainFlowModel(mesa.Model):
         """
         Cria grafos individuais para cada trem:
         - Cada trem vê todas as arestas exceto as ocupadas por outros trens,
-          mantendo sua própria aresta.
+          incluindo trens parados ou em deslocamento.
         """
         for a in self.Train_agents:
             # --- 1. Cria uma cópia do grafo base ---
             G_personal = self.G_full.copy()
     
-            # --- 2. Remove as arestas ocupadas por outros trens ---
             for b in self.Train_agents:
                 if b == a:
                     continue  # ignora o próprio trem
-                
-                edge = (b.node, b.node_target)
-                rev_edge = (b.node_target, b.node)
-                
-                # ignora trens sem destino
-                if b.node is None or b.node_target is None:
-                    continue
-                
-                # --- Não remove se for a mesma aresta do trem 'a' ---
-                if (edge == (a.node, a.node_target)) or (rev_edge == (a.node, a.node_target)):
-                    continue
-                
-                if G_personal.has_edge(*edge):
-                    G_personal.remove_edge(*edge)
-                elif G_personal.has_edge(*rev_edge):
-                    G_personal.remove_edge(*rev_edge)
     
-            # --- 3. Atualiza a visão do trem ---
+                # Se o trem está em movimento (mesmo sem node_target definido), bloqueia arestas saindo do nó
+                if b.node is not None:
+                    neighbors = list(self.G_full.neighbors(b.node))
+                    for neigh in neighbors:
+                        if G_personal.has_edge(b.node, neigh):
+                            G_personal.remove_edge(b.node, neigh)
+    
+                # Se houver target, bloqueia aresta específica
+                if b.node_target is not None:
+                    edge = (b.node, b.node_target)
+                    rev_edge = (b.node_target, b.node)
+                    if edge in G_personal.edges:
+                        G_personal.remove_edge(*edge)
+                    if rev_edge in G_personal.edges:
+                        G_personal.remove_edge(*rev_edge)
+    
+            # Atualiza a visão do trem
             a.update_network_reference(G_personal)
+
 
 
             
