@@ -20,8 +20,7 @@ from Configuration.definitions import *
 
 
 
-adj_matrix , TRAIN_TABLE, ITINERARY_TABLE = Gen.criar_rede_completa(n = 3, i = 3, z = 3, p= 100)
-
+adj_matrix , TRAIN_TABLE, ITINERARY_TABLE = Gen.criar_rede_completa(n = 3, i = 2, z = 3, p= 100)
 
 edges_descrition = zerar_diagonal_principal(adj_matrix)
 station_nodes,train_nodes = extrair_diagonal_principal(adj_matrix)
@@ -30,7 +29,7 @@ station_nodes,train_nodes = extrair_diagonal_principal(adj_matrix)
 
 model = TrainFlowModel(edges_descrition, station_nodes, train_nodes, TRAIN_TABLE, STATION_TABLE_DEFAULT,ITINERARY_TABLE)
 
-n_steps =120
+n_steps =30
 
 for t in range(n_steps):
     model.step()
