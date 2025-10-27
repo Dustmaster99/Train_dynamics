@@ -166,11 +166,16 @@ class Train(mesa.Agent):
                 else:
                     # Já está no destino
                     self.node_target = int(self.node)
-    
+                # Atualiza a flag apenas se encontrou um caminho válido
+                self.update_target = False   # caminho válido encontrado
+           
             except nx.NetworkXNoPath:
                 # Se não existe caminho, mantém o nó atual como target
                 self.node_target = int(self.node)
-            self.update_target = False   
+                
+            # Atualiza a flag apenas se encontrou um caminho válido
+
+                 
     
     def calculate_displacement_to_target(self):
         """
