@@ -22,7 +22,7 @@ import copy
 DEBUG = False
 
 class Station(mesa.Agent):
-    def __init__(self,model, pos, ID, name, time_stop, enable_stop):
+    def __init__(self,model, pos, ID, name, time_stop, enable_stop, itinerary_table):
         # Pass the parameters to the parent class.
         super().__init__(model)
         
@@ -30,7 +30,7 @@ class Station(mesa.Agent):
         self.network = model.grid.G
         self.stationID = ID
         self.node = pos
-        self.itineraryTable = ITINERARY_TABLE
+        self.itineraryTable = itinerary_table
         self.stop_time = time_stop
         self.enable_stop = enable_stop
 
@@ -278,7 +278,7 @@ class TrainFlowModel(mesa.Model):
       - Agentes como Trens viajando.
     """
     
-    def __init__(self, adj_matrix, station_nodes_list, train_nodes_list ,seed = None):
+    def __init__(self, adj_matrix, station_nodes_list, train_nodes_list , train_table ,station_table, itinerary_table, seed = None):
         
         super().__init__(seed=seed)
         # cria grafo determinado pela matrix de adjacências adj_matrix
@@ -297,21 +297,22 @@ class TrainFlowModel(mesa.Model):
         # Importa informações de topologia :
         self.G_full = G
         self.grid = NetworkGrid(G)
-        self.station_table = STATION_TABLE
-        self.itinerary_table = ITINERARY_TABLE
+        self.train_table = train_table
+        self.station_table = station_table
+        self.itinerary_table = itinerary_table
         
         nodes = list(G.nodes)
        
         
         # Retorna os valores de criação de instância para cada estação da STATION_TABLE
-        station_namelist, station_ids, n_stations, time_stop_list,enable_stop_list = get_station_info(STATION_TABLE) 
+        station_namelist, station_ids, n_stations, time_stop_list,enable_stop_list = get_station_info(self.station_table) 
         
         # Retorna os valores de criação de instância para cada estação da TRAIN_TABLE
-        train_namelist, train_ids, n_trains, itinerary, size_list, init_velocity_list =  get_train_info(TRAIN_TABLE)
+        train_namelist, train_ids, n_trains, itinerary, size_list, init_velocity_list =  get_train_info(self.train_table)
         
         # Instanciamento de n agentes
         train_agents = Train.create_agents(model=self, pos = None, n=n_trains, ID=train_ids, ITINERARY = itinerary, name = train_namelist, size = size_list, init_velocity = init_velocity_list)
-        station_agents = Station.create_agents(model=self, pos = None, n=n_stations, ID = station_ids, name = station_namelist, time_stop = time_stop_list, enable_stop = enable_stop_list)
+        station_agents = Station.create_agents(model=self, pos = None, n=n_stations, ID = station_ids, name = station_namelist, time_stop = time_stop_list, enable_stop = enable_stop_list,itinerary_table = self.itinerary_table)
         
         # retorna todos os nós da rede.
         nodes = list(self.grid.G.nodes)

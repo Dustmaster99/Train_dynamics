@@ -41,7 +41,7 @@ class train_data:
 
 
 # Dicionário de estações
-STATION_TABLE = {
+STATION_TABLE_DEFAULT = {
     "S_A": station_data(name="S_A", ID=1, time_stop= round(5/STEP_SCALE),enable_stop = True),
     "S_B": station_data(name="S_B", ID=2, time_stop= round(5/STEP_SCALE),enable_stop = True),
     "S_C": station_data(name="S_C", ID=3, time_stop= round(5/STEP_SCALE),enable_stop = True),
@@ -57,18 +57,26 @@ STATION_TABLE = {
     "S_M": station_data(name="S_M", ID=13,time_stop= round(1/STEP_SCALE),enable_stop = True),
 }
 
-TRAIN_TABLE = {
+#Train table for general simulation
+TRAIN_TABLE_DEFAULT = {
     "T_A": train_data(name="T_A", ID=1, itinerary="I_A", size = 10, init_velocity = round(18*STEP_SCALE)),
     "T_B": train_data(name="T_B", ID=2, itinerary="I_B", size = 10, init_velocity = round(5*STEP_SCALE)),
+    #"T_C": train_data(name="T_C", ID=3, itinerary="I_C", size = 10, init_velocity = round(20*STEP_SCALE)),
+    #"T_D": train_data(name="T_D", ID=4, itinerary="I_D", size = 10, init_velocity = round(20*STEP_SCALE)),
+    #"T_E": train_data(name="T_E", ID=5, itinerary="I_E", size = 10, init_velocity = round(20*STEP_SCALE)),
+    #"T_F": train_data(name="T_F", ID=6, itinerary="I_F", size = 10, init_velocity = round(20*STEP_SCALE)),
 }
 
 
-# Dicionário de itinerários
-ITINERARY_TABLE = {
+
+# Itinerary for general simulation
+ITINERARY_TABLE_DEFAULT = {
     "I_A": itinerary_data(path=["S_A", "S_B","S_D"], start_station="S_A", end_station="S_D"),
     "I_B": itinerary_data(path=["S_D", "S_B", "S_A"], start_station="S_D", end_station="S_A"),
-    "I_C": itinerary_data(path=["S_A","S_B","S_C","S_D","S_E","S_F","S_G","S_H","S_I","S_J","S_K","S_L","S_M"], start_station="S_A", end_station="S_M"),
+    "I_C": itinerary_data(path=["S_A","S_B","S_C"], start_station="S_A", end_station="S_C"),
+    "I_D": itinerary_data(path=["S_C","S_B","S_A"], start_station="S_C", end_station="S_A"),
 }
+
 
 
 # Definition of functions: 

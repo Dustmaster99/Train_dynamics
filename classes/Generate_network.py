@@ -9,6 +9,8 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 import random
+import string
+from Configuration.definitions import *
 
 def gerar_matriz_adjacencia_1(topo_type: str, **kwargs) -> np.ndarray:
     """
@@ -215,3 +217,92 @@ def insert_random_nones(station_nodes, n):
     
     return result
 
+
+# =============================================
+# Função principal
+# =============================================
+def criar_rede_completa(n, i, z, p=100, STEP_SCALE=1):
+    """
+    Gera:
+      1. adj_matrix formatada (com rótulos)
+      2. TRAIN_TABLE com objetos train_data
+      3. ITINERARY_TABLE com objetos itinerary_data
+
+    Parâmetros:
+      n : número de nós de entrada
+      i : número de nós intermediários
+      z : número de nós de saída
+      p : peso padrão
+      STEP_SCALE : fator de escala de velocidade
+
+    Retorna:
+      adj_matrix, TRAIN_TABLE, ITINERARY_TABLE
+    """
+
+    letras = list(string.ascii_uppercase)
+    total = n + i + z
+
+    # ==========================================================
+    # 1️⃣ MATRIZ DE ADJACÊNCIA
+    # ==========================================================
+    adj_matrix = [[0]*total for _ in range(total)]
+    entrada_idx = range(0, n)
+    inter_idx = range(n, n+i)
+    saida_idx = range(n+i, total)
+
+    # --- Diagonal: Entradas
+    for j, e in enumerate(entrada_idx):
+        adj_matrix[e][e] = [f"S_{letras[j]}", f"T_{letras[j]}"]
+
+    # --- Diagonal: Intermediárias
+    for h in inter_idx:
+        adj_matrix[h][h] = 0  # intermediária permanece sem rótulo
+
+    # --- Diagonal: Saídas
+    for k, s in enumerate(saida_idx, start=n):
+        adj_matrix[s][s] = [f"S_{letras[k]}", None]
+
+    # --- Conexões (bidirecionais)
+    for e in entrada_idx:
+        for h in inter_idx:
+            adj_matrix[e][h] = p
+            adj_matrix[h][e] = p
+    for h in inter_idx:
+        for s in saida_idx:
+            adj_matrix[h][s] = p
+            adj_matrix[s][h] = p
+
+    # ==========================================================
+    # 2️⃣ TRAIN_TABLE (usando train_data)
+    # ==========================================================
+    TRAIN_TABLE = {}
+    for idx, letra in enumerate(letras[:n], start=1):
+        TRAIN_TABLE[f"T_{letra}"] = train_data(
+            name=f"T_{letra}",
+            ID=idx,
+            itinerary=f"I_{letra}",
+            size=10,
+            init_velocity=round(20 * STEP_SCALE)
+        )
+
+    # ==========================================================
+    # 3️⃣ ITINERARY_TABLE (usando itinerary_data)
+    # ==========================================================
+    ITINERARY_TABLE = {}
+
+    if n > z:
+        print("⚠️ Aviso: há mais entradas do que saídas únicas. Algumas não terão destino exclusivo.")
+
+    for j in range(n):
+        entrada_letra = letras[j]
+        saida_letra = letras[j + n]  # desloca n posições no alfabeto
+
+        path = [f"S_{entrada_letra}", f"S_{saida_letra}"]
+
+        ITINERARY_TABLE[f"I_{entrada_letra}"] = itinerary_data(
+            path=path,
+            start_station=f"S_{entrada_letra}",
+            end_station=f"S_{saida_letra}"
+        )
+
+    return adj_matrix, TRAIN_TABLE, ITINERARY_TABLE
