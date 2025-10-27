@@ -434,12 +434,11 @@ class TrainFlowModel(mesa.Model):
     
     def detect_collisions(self, agents_list):
         """
-        Marca self.crash = True para trens que colidem e mantém o estado para sempre.
-        Considera:
-        - colisão no mesmo nó;
-        - sobreposição na mesma aresta (mesma direção);
-        - cruzamento em direções opostas (A->B e B->A);
-        - offset físico baseado em self.size (centro do trem).
+        Detecta colisões entre trens considerando:
+        - Sobreposição na mesma aresta (mesma direção)
+        - Cruzamento em direções opostas
+        - Colisão em nós
+        Marca self.crash = True e zera velocidade em caso de colisão.
         """
         
         for i in range(len(agents_list)):
@@ -447,30 +446,59 @@ class TrainFlowModel(mesa.Model):
             for j in range(i + 1, len(agents_list)):
                 a2 = agents_list[j]
     
-                # Se ambos já colidiram, não precisa verificar de novo
+                # Se ambos já colidiram, ignora
                 if a1.crash and a2.crash:
                     continue
     
-                # (1) colisão no mesmo nó, somente se ambos estão parados no nó
-                if a1.node == a2.node and a1.node_target is None and a2.node_target is None:
+                # --- Determinar aresta atual de cada trem ---
+                edge1 = (a1.node, a1.node_target)
+                edge2 = (a2.node, a2.node_target)
+    
+                # Se algum trem não está se movendo, edge é None
+                moving1 = a1.node_target is not None
+                moving2 = a2.node_target is not None
+    
+                # --- (1) Colisão frontal ou na mesma direção na mesma aresta ---
+                if moving1 and moving2:
+                    same_edge = (edge1 == edge2)
+                    opposite_edge = (edge1 == (edge2[1], edge2[0]))
+    
+                    # mesma direção
+                    if same_edge:
+                        if self.overlap(a1, a2):
+                            a1.crash = a2.crash = True
+                            a1.velocity = a2.velocity = 0
+                            continue
+    
+                    # direção oposta
+                    elif opposite_edge:
+                        try:
+                            weight = self.grid.G.edges[edge1]['weight']
+                        except KeyError:
+                            weight = self.grid.G.edges[(edge1[1], edge1[0])]['weight']
+                        if self.reverse_overlap(a1, a2, weight):
+                            a1.crash = a2.crash = True
+                            a1.velocity = a2.velocity = 0
+                            continue
+    
+                # --- (2) Colisão em nó ---
+                # Se ambos estão no mesmo nó (ou um está chegando nesse nó)
+                if a1.node == a2.node:
                     a1.crash = a2.crash = True
                     a1.velocity = a2.velocity = 0
                     continue
     
-                # --- (2) mesma aresta (mesma direção) ---
-                if a1.node == a2.node and a1.node_target == a2.node_target:
-                    if self.overlap(a1, a2):
-                        a1.crash = a2.crash = True
-                        a1.velocity = a2.velocity = 0
-                        continue
+                # Se a1 chegou no nó destino de a2 (ou vice-versa)
+                if moving1 and a1.node_target == a2.node:
+                    # a1 atingiu a posição de a2 parado
+                    a1.crash = a2.crash = True
+                    a1.velocity = a2.velocity = 0
+                    continue
     
-                # --- (3) cruzamento oposto (A->B e B->A) ---
-                if a1.node == a2.node_target and a1.node_target == a2.node:
-                    weight = self.grid.G.edges[a1.node, a1.node_target]['weight']
-                    if self.reverse_overlap(a1, a2, weight):
-                        a1.crash = a2.crash = True
-                        a1.velocity = a2.velocity = 0
-                        continue
+                if moving2 and a2.node_target == a1.node:
+                    a1.crash = a2.crash = True
+                    a1.velocity = a2.velocity = 0
+                    continue
 
   
 
