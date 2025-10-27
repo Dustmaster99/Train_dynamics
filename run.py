@@ -82,6 +82,6 @@ for t in range(n_steps):
     model.step()
     plot.print_network_state(model.grid.G,t) 
     plot.plot_network_state(model.grid.G, model.G_runtime, t)
-    plot.plot_network_state_pyvis(model.grid.G,t)
+    #plot.plot_network_state_pyvis(model.grid.G,t)
 
               
