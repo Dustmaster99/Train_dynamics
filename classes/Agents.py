@@ -145,37 +145,44 @@ class Train(mesa.Agent):
     # ===== Outros métodos =====
     
     def calculate_target_node(self):
-    
         """
         Atualiza self.node_target para o próximo nó no caminho mínimo
         entre self.node (atual) e self.next_mission.
+        Impede múltiplos trens escolherem o mesmo target no mesmo step.
         """
         
         if self.update_target and self.next_mission is not None:
             try:
-                # Calcula o caminho mínimo usando Dijkstra
-                # Garantindo que self.node e self.next_mission sejam inteiros
+                # Caminho mínimo usando Dijkstra
                 path = nx.dijkstra_path(
                     self.network, int(self.node), int(self.next_mission), weight="weight"
                 )
     
-                # Se existir um caminho com mais de um nó, pega o próximo nó
-                # path[0] é o nó atual, path[1] é o próximo
                 if len(path) > 1:
-                    self.node_target = int(path[1])  # garante inteiro
+                    proposed_target = int(path[1])  # próximo nó
+    
+                    # --- VERIFICA SE O TARGET ESTÁ BLOQUEADO ---
+                    if proposed_target in self.model.step_blocked_targets:
+                        # Target ocupado neste step → não muda node_target
+                        if DEBUG:
+                            print(f"Train {self.trainID}: target {proposed_target} blocked this step")
+                        self.node_target = None
+                        self.update_target = True
+                        return
+                    else:
+                        # Target livre → atualiza e bloqueia
+                        self.node_target = proposed_target
+                        self.model.step_blocked_targets.add(proposed_target)
                 else:
                     # Já está no destino
                     self.node_target = int(self.node)
-                # Atualiza a flag apenas se encontrou um caminho válido
-                self.update_target = False   # caminho válido encontrado
-           
-            except nx.NetworkXNoPath:
-                # Se não existe caminho, mantém o nó atual como target
-                self.node_target = int(self.node)
                 
-            # Atualiza a flag apenas se encontrou um caminho válido
-
-                 
+                # Caminho válido encontrado
+                self.update_target = False
+    
+            except nx.NetworkXNoPath:
+                # Sem caminho → mantém nó atual
+                self.node_target = int(self.node)
     
     def calculate_displacement_to_target(self):
         """
@@ -300,7 +307,7 @@ class TrainFlowModel(mesa.Model):
         self.train_table = train_table
         self.station_table = station_table
         self.itinerary_table = itinerary_table
-        
+        self.step_blocked_targets = set()  # armazena targets já escolhidos neste step
         nodes = list(G.nodes)
        
         
@@ -361,6 +368,8 @@ class TrainFlowModel(mesa.Model):
         # Finish the initialization and create a self property to store the agents after init
         self.Station_agents = station_agents
         self.Train_agents = train_agents
+        
+        
         
         
         
@@ -507,8 +516,6 @@ class TrainFlowModel(mesa.Model):
                     a1.velocity = a2.velocity = 0
                     continue
 
-  
-
     def update_individual_networks(self):
         """
         Cria grafos individuais para cada trem:
@@ -523,24 +530,23 @@ class TrainFlowModel(mesa.Model):
                 if b == a:
                     continue  # ignora o próprio trem
     
-                # Se o trem está em movimento (mesmo sem node_target definido), bloqueia arestas saindo do nó
+                # --- 2. Bloqueia arestas saindo do nó do trem b ---
                 if b.node is not None:
                     neighbors = list(self.G_full.neighbors(b.node))
                     for neigh in neighbors:
                         if G_personal.has_edge(b.node, neigh):
                             G_personal.remove_edge(b.node, neigh)
     
-                # Se houver target, bloqueia aresta específica
+                # --- 3. Bloqueia todas as arestas saindo do node_target de b ---
                 if b.node_target is not None:
-                    edge = (b.node, b.node_target)
-                    rev_edge = (b.node_target, b.node)
-                    if edge in G_personal.edges:
-                        G_personal.remove_edge(*edge)
-                    if rev_edge in G_personal.edges:
-                        G_personal.remove_edge(*rev_edge)
+                    target_neighbors = list(G_personal.neighbors(b.node_target))
+                    for neigh in target_neighbors:
+                        if G_personal.has_edge(b.node_target, neigh):
+                            G_personal.remove_edge(b.node_target, neigh)
     
             # Atualiza a visão do trem
-            a.update_network_reference(G_personal)
+            a.update_network_reference(G_personal)    
+
 
 
 
@@ -578,6 +584,10 @@ class TrainFlowModel(mesa.Model):
     def step(self):
         
         print("\n=== STEP ===")
+        
+        # (0) Limpa ao inicio de cada iteração os targets já bloqueados na própria interação 
+    
+        self.step_blocked_targets.clear()  # limpa o bloqueio de step anterior
         
         # (1) Cada trem define sua próxima missão (ex: destino, itinerário, etc.)
         for a in self.Train_agents:     
