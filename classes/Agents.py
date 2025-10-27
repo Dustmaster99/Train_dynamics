@@ -170,7 +170,7 @@ class Train(mesa.Agent):
             except nx.NetworkXNoPath:
                 # Se não existe caminho, mantém o nó atual como target
                 self.node_target = int(self.node)
-                
+            self.update_target = False   
     
     def calculate_displacement_to_target(self):
         """
@@ -417,6 +417,7 @@ class TrainFlowModel(mesa.Model):
                 self.grid.move_agent(a, a.node_target)  # move o agente para o nó destino
                 a.node = a.node_target
                 a.set_advance_to_next_node(False)
+                a.update_target =True
                 a.just_arrived = True
 
 
