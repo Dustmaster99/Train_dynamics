@@ -33,16 +33,16 @@ adj_matrix = [
 edges_descrition = zerar_diagonal_principal(adj_matrix)
 station_nodes,train_nodes = extrair_diagonal_principal(adj_matrix)
 
+model = TrainFlowModel(edges_descrition, station_nodes, train_nodes, TRAIN_TABLE_DEFAULT, STATION_TABLE_DEFAULT,ITINERARY_TABLE_DEFAULT)
 
-
-model = TrainFlowModel(edges_descrition, station_nodes, train_nodes,TRAIN_TABLE_DEFAULT, STATION_TABLE_DEFAULT,ITINERARY_TABLE_DEFAULT)
-
-n_steps =120
+n_steps =30
 
 for t in range(n_steps):
     model.step()
     plot.print_network_state(model.grid.G,t) 
     plot.plot_network_state(model.grid.G, model.G_runtime, t)
     #plot.plot_network_state_pyvis(model.grid.G,t)
+model.export_CSV("Logs/run")
+
 
               
