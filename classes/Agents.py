@@ -42,7 +42,7 @@ class Station(mesa.Agent):
         if next_mission is None:
            return None  # não há próxima missão
         else: 
-            return next_mission  # sempre retorna int
+            return next_mission  
     
     def set_stop_to_train(self, train_instance: "Train") -> None:
         if(self.enable_stop == True):
@@ -86,7 +86,7 @@ class Train(mesa.Agent):
        
         self.last_node = None
         self.init_velocity = init_velocity
-        self.velocity = init_velocity # velocity in m/s
+        self.velocity = 0 # velocity in m/s
         
         self.displacement = 0 # Displacement position in the current adge. ( All trains start at 0 )
         self.advance_to_next_node = False # bool variable to see if the object already moved pass the treshold of advancing to next node
@@ -152,6 +152,7 @@ class Train(mesa.Agent):
         entre self.node (atual) e self.next_mission.
         Impede múltiplos trens escolherem o mesmo target no mesmo step.
         """
+        previous_target = self.node_target  # salva valor anterior
         
         if self.update_target and self.next_mission is not None:
             try:
@@ -185,6 +186,19 @@ class Train(mesa.Agent):
             except nx.NetworkXNoPath:
                 # Sem caminho → mantém nó atual
                 self.node_target = int(self.node)
+                
+        # --- Atualiza velocidade ---
+        if not self.OnStop:
+            if self.next_mission is None:
+                # Sem próxima missão → velocidade zero obrigatória
+                self.velocity = 0
+            elif self.update_target and (self.node_target is None or self.node_target == previous_target):
+                # Tentou atualizar o target mas falhou ou permaneceu o mesmo
+                self.velocity = 0
+            elif self.node_target is not None and not self.update_target:
+                # Target válido e atualização concluída
+                self.velocity = self.init_velocity
+
     
     def calculate_displacement_to_target(self):
         """
@@ -251,6 +265,7 @@ class Train(mesa.Agent):
         next_station_name = station_agent.get_next_mission(self.itinerary)
         
         if next_station_name is None:
+            self.next_mission = None
             return
         
         # Procura o agente Station correspondente para pegar o nó
@@ -262,7 +277,7 @@ class Train(mesa.Agent):
         if target_station_agent is not None:
             # Atualiza next_mission com o nó da rede
             self.next_mission = target_station_agent.node
-    
+            
     def update_network_reference(self, G_reference):
         """
         Atualiza a referência da propriedade self.network para o grafo fornecido.
