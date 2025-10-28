@@ -18,6 +18,7 @@ import networkx as nx
 import random
 from Configuration.definitions import *
 import copy
+from mesa.datacollection import DataCollector
 
 DEBUG = False
 
@@ -33,6 +34,7 @@ class Station(mesa.Agent):
         self.itineraryTable = itinerary_table
         self.stop_time = time_stop
         self.enable_stop = enable_stop
+        self.agent_type = "Station"
 
     def get_next_mission(self, itinerary):
         
@@ -78,7 +80,7 @@ class Train(mesa.Agent):
         self.itinerary = ITINERARY
         self.next_mission = None
         self.name = name
-        
+        self.agent_type = "Train"
         self.update_target = True
         self.node_target = None
        
@@ -309,6 +311,7 @@ class TrainFlowModel(mesa.Model):
         self.itinerary_table = itinerary_table
         self.step_blocked_targets = set()  # armazena targets já escolhidos neste step
         nodes = list(G.nodes)
+        self.step_count = 0
        
         
         # Retorna os valores de criação de instância para cada estação da STATION_TABLE
@@ -369,9 +372,70 @@ class TrainFlowModel(mesa.Model):
         self.Station_agents = station_agents
         self.Train_agents = train_agents
         
+            # Para estatísticas gerais do modelo
+        self.model_datacollector = DataCollector(
+            model_reporters={
+                "n_trains": lambda m: m.get_n_trains(),
+                "mean speed": lambda m: m.get_mean_speed(),
+                "n_crashed_trains": lambda m: m.get_n_crashes(),
+            }
+        )
+
+                # Para os trens
+        self.train_datacollector = DataCollector(
+            agent_reporters={
+                "Agent type": lambda a: a.agent_type if getattr(a, "agent_type", None) == "Train" else None,
+                "Name": lambda a: a.name if getattr(a, "agent_type", None) == "Train" else None,
+                "Node": lambda a: a.node if getattr(a, "agent_type", None) == "Train" else None,
+                "Last Node": lambda a: a.last_node if getattr(a, "agent_type", None) == "Train" else None,
+                "Next Mission": lambda a: a.next_mission if getattr(a, "agent_type", None) == "Train" else None,
+                "Itinerary": lambda a: a.itinerary if getattr(a, "agent_type", None) == "Train" else None,
+                "Train ID": lambda a: a.trainID if getattr(a, "agent_type", None) == "Train" else None,
+                "Size": lambda a: a.size if getattr(a, "agent_type", None) == "Train" else None,
+                "Crash": lambda a: a.crash if getattr(a, "agent_type", None) == "Train" else None,
+                "Onstop": lambda a: a.OnStop if getattr(a, "agent_type", None) == "Train" else None,
+                "Velocity": lambda a: a.velocity if getattr(a, "agent_type", None) == "Train" else None,
+                "Time": lambda a: a.model.step_count * STEP_SCALE if getattr(a, "agent_type", None) == "Train" else None,
+            }
+        )
         
+        # Para as estações
+        self.station_datacollector = DataCollector(
+            agent_reporters={
+                "Agent type": lambda a: a.agent_type if getattr(a, "agent_type", None) == "Station" else None,
+                "Name": lambda a: a.name if getattr(a, "agent_type", None) == "Station" else None,
+                "Node": lambda a: a.node if getattr(a, "agent_type", None) == "Station" else None,
+                "Station ID": lambda a: a.stationID if getattr(a, "agent_type", None) == "Station" else None,
+                "Stop time": lambda a: a.stop_time if getattr(a, "agent_type", None) == "Station" else None,
+                "Enable_stop": lambda a: a.enable_stop if getattr(a, "agent_type", None) == "Station" else None,
+                "Time": lambda a: a.model.step_count * STEP_SCALE if getattr(a, "agent_type", None) == "Station" else None,
+            }
+        )
+
         
-        
+    def get_mean_speed(self):
+        n_agents = len(self.Train_agents)
+        if n_agents == 0:
+            return 0.0  # ou None, dependendo do que faz sentido
+        t_speed = sum(a.velocity for a in self.Train_agents)
+        mean_speed = t_speed / n_agents
+        return mean_speed
+
+    
+    def get_n_crashes (self):
+        crashes_count = 0
+        for a in self.Train_agents:
+            if(a.crash == True):
+                crashes_count += 1
+        return crashes_count
+    
+    def get_n_trains (self):
+        n_count = 0
+        for a in self.Train_agents:
+            n_count += 1
+        return n_count
+            
+            
         
     def overlap(self, a1, a2):
         """
@@ -580,10 +644,45 @@ class TrainFlowModel(mesa.Model):
                 removed_edges.append(rev_edge)
 
     
-       
+    def export_CSV(self, path):
+        """
+        Exporta os dados dos coletores para CSV.
+        O argumento `path` é concatenado ao diretório atual de execução.
+        """
+        # Diretório atual de execução
+        current_dir = os.getcwd()
+    
+        # Concatena o caminho relativo
+        full_path = os.path.join(current_dir, path)
+    
+        # Garante que o diretório existe
+        os.makedirs(full_path, exist_ok=True)
+    
+        # Obtém os DataFrames
+        df_trains   = self.train_datacollector.get_agent_vars_dataframe()
+        df_stations = self.station_datacollector.get_agent_vars_dataframe()
+        df_model    = self.model_datacollector.get_model_vars_dataframe()
+        
+        df_trains = df_trains[df_trains["Train ID"].notna()]  # remove linhas de agentes que não são trens
+        df_stations = df_stations[df_stations["Station ID"].notna()]
+    
+        # Monta caminhos completos
+        trains_path   = os.path.join(full_path, "trains.csv")
+        stations_path = os.path.join(full_path, "stations.csv")
+        model_path    = os.path.join(full_path, "model.csv")
+    
+        # Salva em CSV
+        df_trains.to_csv(trains_path, index_label="Time")
+        df_stations.to_csv(stations_path, index_label="Time")
+        df_model.to_csv(model_path, index_label="Time")
+    
+        print(f"Arquivos exportados para: {full_path}")
+        
+        
     def step(self):
         
         print("\n=== STEP ===")
+        
         
         # (0) Limpa ao inicio de cada iteração os targets já bloqueados na própria interação 
     
@@ -641,7 +740,12 @@ class TrainFlowModel(mesa.Model):
         # removendo arestas atualmente ocupadas por trens em movimento
         self.update_individual_networks()
         self.update_runtime_graph()
-    
+        
+        self.train_datacollector.collect(model=self)
+        self.station_datacollector.collect(model=self)
+        self.model_datacollector.collect(model=self)  # apenas model_reporters
+        
+        self.step_count += 1
         
         
         
