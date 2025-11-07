@@ -36,6 +36,7 @@ for t in range(n_steps):
     plot.print_network_state(model.grid.G,t) 
     plot.plot_network_state(model.grid.G, model.G_runtime, t)
     #plot.plot_network_state_pyvis(model.grid.G,t)
+model.model_events_datacollector.collect(model)
 model.export_CSV("Logs/run_case_2")
 
               

@@ -10,6 +10,7 @@ os.chdir(r'C:\Kegle_Jojo\Train_Dynamics')
 from enum import Enum
 from dataclasses import dataclass
 from typing import List
+from typing import Any, Optional
 
 
 # Time Scale seconds
@@ -21,7 +22,7 @@ class itinerary_data:
     path: List[str]        # lista de nomes de estações
     start_station: str
     end_station: str
-    
+
     
 @dataclass
 class station_data:

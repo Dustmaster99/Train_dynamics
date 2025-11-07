@@ -17,6 +17,7 @@ from mesa.space import NetworkGrid
 import networkx as nx
 import random
 from Configuration.definitions import *
+from Configuration.classes import *
 import copy
 from mesa.datacollection import DataCollector
 
@@ -35,6 +36,7 @@ class Station(mesa.Agent):
         self.stop_time = time_stop
         self.enable_stop = enable_stop
         self.agent_type = "Station"
+        self.currentTrains = None
 
     def get_next_mission(self, itinerary):
         
@@ -77,27 +79,36 @@ class Train(mesa.Agent):
         self.network = model.grid.G
         self.trainID = ID
         self.node = pos
+        self.last_node = None
+        
+        #Itinerary Information
         self.itinerary = ITINERARY
+        self.itinerary_start_time = None
+        self.itinerary_end_time = None
+        
+
         self.next_mission = None
         self.name = name
         self.agent_type = "Train"
         self.update_target = True
         self.node_target = None
+        
+        # Flags 
+        self.is_itinerary_active = FlagState(False, False)
+        self.OnStop = False
+        self.just_arrived = False 
+        self.advance_to_next_node = False # bool variable to see if the object already moved pass the treshold of advancing to next node
+        self.crash = False
        
-        self.last_node = None
+        # cinematic data
         self.init_velocity = init_velocity
         self.velocity = 0 # velocity in m/s
-        
-        self.displacement = 0 # Displacement position in the current adge. ( All trains start at 0 )
-        self.advance_to_next_node = False # bool variable to see if the object already moved pass the treshold of advancing to next node
-    
-        self.crash = False
+        self.displacement = 0 # Displacement position in the current adge. ( All trains start at 0 ) 
         self.size = size
-        
         self.stop_steps = 0;
-        self.OnStop = False
         
-        self.just_arrived = False  
+        
+         
         
     # ===== Getters =====
     def get_location(self):
@@ -266,6 +277,7 @@ class Train(mesa.Agent):
         
         if next_station_name is None:
             self.next_mission = None
+            self.is_itinerary_active.update(False)
             return
         
         # Procura o agente Station correspondente para pegar o nó
@@ -275,8 +287,10 @@ class Train(mesa.Agent):
         )
         
         if target_station_agent is not None:
-            # Atualiza next_mission com o nó da rede
+            # Atualiza next_mission com o nó da rede, e define o itinerario como ativo
             self.next_mission = target_station_agent.node
+            self.is_itinerary_active.update(True)
+            
             
     def update_network_reference(self, G_reference):
         """
@@ -292,7 +306,30 @@ class Train(mesa.Agent):
             self.network = G_reference
         else:
             print(f"[Warning] Grafo fornecido é None para o trem {getattr(self, 'trainID', 'N/A')}.")
-
+    
+    def check_itinerary_status(self):
+        """
+       Verifica se houve transição de True→False na flag `is_itinerary_active`.
+       Caso sim, registra no histórico global do modelo.
+       """
+        # Transição de inicio de itinerário
+        if(self.is_itinerary_active.previous == False) and (self.is_itinerary_active.current == True):
+            self.itinerary_start_time = self.model.step_count * STEP_SCALE
+        
+        # Transição de fim de itinerário
+        if(self.is_itinerary_active.previous == True) and (self.is_itinerary_active.current == False):
+            self.itinerary_end_time = self.model.step_count * STEP_SCALE
+            delta = self.itinerary_end_time - self.itinerary_start_time
+            # adiciona um registro no histórico do modelo
+            self.model.itinerary_historian.append({
+                "name": self.itinerary,
+                "delta": delta
+            })
+            
+            
+            
+        
+            
             
        
 class TrainFlowModel(mesa.Model):
@@ -302,12 +339,12 @@ class TrainFlowModel(mesa.Model):
       - Agentes como Trens viajando.
     """
     
-    def __init__(self, adj_matrix, station_nodes_list, train_nodes_list , train_table ,station_table, itinerary_table, seed = None):
+    def __init__(self, adj_matrix, station_nodes_list, train_nodes_list , train_table ,station_table, itinerary_table, LogMetrics = True, seed = None):
         
         super().__init__(seed=seed)
         # cria grafo determinado pela matrix de adjacências adj_matrix
         G = nx.from_numpy_array(np.array(adj_matrix))
-        
+        self.LogMetrics = LogMetrics
         
         # concatena os nomes das estações aos nós pertencentes das mesmas
         for i, station_name in enumerate(station_nodes_list ):
@@ -324,6 +361,7 @@ class TrainFlowModel(mesa.Model):
         self.train_table = train_table
         self.station_table = station_table
         self.itinerary_table = itinerary_table
+        self.itinerary_historian = []
         self.step_blocked_targets = set()  # armazena targets já escolhidos neste step
         nodes = list(G.nodes)
         self.step_count = 0
@@ -393,6 +431,13 @@ class TrainFlowModel(mesa.Model):
                 "n_trains": lambda m: m.get_n_trains(),
                 "mean speed": lambda m: m.get_mean_speed(),
                 "n_crashed_trains": lambda m: m.get_n_crashes(),
+                "Time": lambda m: (m.step_count) * STEP_SCALE
+            }
+        )
+        
+        self.model_events_datacollector = DataCollector(
+            model_reporters={
+                "itinerary_historian": lambda m: list(m.itinerary_historian)
             }
         )
 
@@ -423,6 +468,7 @@ class TrainFlowModel(mesa.Model):
                 "Station ID": lambda a: a.stationID if getattr(a, "agent_type", None) == "Station" else None,
                 "Stop time": lambda a: a.stop_time if getattr(a, "agent_type", None) == "Station" else None,
                 "Enable_stop": lambda a: a.enable_stop if getattr(a, "agent_type", None) == "Station" else None,
+                "Trains at station": lambda a: a.currentTrains if getattr(a, "agent_type", None) == "Station" else None,
                 "Time": lambda a: a.model.step_count * STEP_SCALE if getattr(a, "agent_type", None) == "Station" else None,
             }
         )
@@ -677,6 +723,7 @@ class TrainFlowModel(mesa.Model):
         df_trains   = self.train_datacollector.get_agent_vars_dataframe()
         df_stations = self.station_datacollector.get_agent_vars_dataframe()
         df_model    = self.model_datacollector.get_model_vars_dataframe()
+        df_events = self.model_events_datacollector.get_model_vars_dataframe()
         
         df_trains = df_trains[df_trains["Train ID"].notna()]  # remove linhas de agentes que não são trens
         df_stations = df_stations[df_stations["Station ID"].notna()]
@@ -685,11 +732,13 @@ class TrainFlowModel(mesa.Model):
         trains_path   = os.path.join(full_path, "trains.csv")
         stations_path = os.path.join(full_path, "stations.csv")
         model_path    = os.path.join(full_path, "model.csv")
+        events_path   = os.path.join(full_path, "model_events.csv")
     
         # Salva em CSV
-        df_trains.to_csv(trains_path, index_label="Time")
-        df_stations.to_csv(stations_path, index_label="Time")
-        df_model.to_csv(model_path, index_label="Time")
+        df_trains.to_csv(trains_path, index=False)
+        df_stations.to_csv(stations_path, index=False)
+        df_model.to_csv(model_path, index=False)
+        df_events.to_csv(events_path, index=False)
     
         print(f"Arquivos exportados para: {full_path}")
         
@@ -707,7 +756,7 @@ class TrainFlowModel(mesa.Model):
         for a in self.Train_agents:     
             print(f"Train {a.trainID}: displacement={a.displacement}, advance={a.advance_to_next_node}")
             a.set_next_mission()
-        
+            a.check_itinerary_status()
         # (2) Cada trem calcula o próximo nó de destino (node_target)
         for a in self.Train_agents: 
             a.calculate_target_node()
@@ -739,6 +788,9 @@ class TrainFlowModel(mesa.Model):
             trains_at_station = [
                 a for a in self.Train_agents if a.node == s.node
             ]
+            # Informação para logar os trens parados na estação no step determinado
+            s.currentTrains = trains_at_station
+            
             for a in trains_at_station:
                 # Se o trem acabou de chegar e pode parar, aplica parada
                 if not a.OnStop and a.just_arrived:
@@ -756,10 +808,15 @@ class TrainFlowModel(mesa.Model):
         self.update_individual_networks()
         self.update_runtime_graph()
         
-        self.train_datacollector.collect(model=self)
-        self.station_datacollector.collect(model=self)
-        self.model_datacollector.collect(model=self)  # apenas model_reporters
-        
+        # (9) Coleta os dados da simulação, caso a flag seja True
+        if getattr(self, "LogMetrics", False):
+            self.train_datacollector.collect(model=self)
+            self.station_datacollector.collect(model=self)
+            self.model_datacollector.collect(model=self)
+        else:
+            print("⚠️ Coleta de métricas desativada: LogMetrics está definido como False.")  
+       
+        # (10) Atualiza a contagem de steps da simulação em 1
         self.step_count += 1
         
         
