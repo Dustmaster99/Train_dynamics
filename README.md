@@ -288,12 +288,3 @@ python run.py
 # Autor
 
 José Henrique Alves de Oliveira
-
-- Engenharia Elétrica — UNICAMP
-- Mestrado em Sistemas Complexos e Machine Learning
-- Pesquisa em:
-  - sistemas complexos
-  - modelagem
-  - reinforcement learning
-  - sistemas multiagentes
-  - dinâmica ferroviária
