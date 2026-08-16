@@ -9,6 +9,8 @@ import os
 os.chdir(r'C:\Kegle_Jojo\Train_Dynamics')
 
 
+from dataclasses import dataclass
+
 # mesa_info_flow.py
 # Modelo: nós = meio, agentes = informação em movimento
 import mesa
@@ -17,11 +19,41 @@ from mesa.space import NetworkGrid
 import networkx as nx
 import random
 from Configuration.definitions import *
-from Configuration.classes import *
 import copy
 from mesa.datacollection import DataCollector
 
 DEBUG = False
+
+
+@dataclass
+class FlagState:
+    """Mantém os valores anterior e atual de uma flag de estado."""
+
+    previous: bool = False
+    current: bool = False
+
+    def update(self, new_value: bool):
+        """Move o valor atual para ``previous`` e registra o novo valor."""
+        self.previous = self.current
+        self.current = new_value
+
+
+class StateFlags:
+    """Agrupa flags nomeadas e preserva suas transições de estado."""
+
+    def __init__(self, **kwargs):
+        self._states = {key: FlagState(value, value) for key, value in kwargs.items()}
+
+    def update(self, **kwargs):
+        for key, value in kwargs.items():
+            if key in self._states:
+                self._states[key].update(value)
+            else:
+                self._states[key] = FlagState(value, value)
+
+    def __getattr__(self, item):
+        return self._states[item]
+
 
 class Station(mesa.Agent):
     def __init__(self,model, pos, ID, name, time_stop, enable_stop, itinerary_table):
