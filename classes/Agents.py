@@ -5,11 +5,8 @@ Created on Thu Sep  4 14:19:51 2025
 @author: eosjo
 """
 
-import os
-os.chdir(r'C:\Kegle_Jojo\Train_Dynamics')
-
-
 from dataclasses import dataclass
+from pathlib import Path
 
 # mesa_info_flow.py
 # Modelo: nós = meio, agentes = informação em movimento
@@ -19,7 +16,6 @@ from mesa.space import NetworkGrid
 import networkx as nx
 import random
 from Configuration.definitions import *
-import copy
 from mesa.datacollection import DataCollector
 
 DEBUG = False
@@ -261,7 +257,7 @@ class Train(mesa.Agent):
         
         # 3. Verifica se a aresta existe NO GRAFO
         if not self.network.has_edge(self.node, self.node_target):
-            print(f"❌ ERRO: Train {self.trainID} - Aresta ({self.node},{self.node_target}) não existe!")
+            print(f"ERRO: Train {self.trainID} - Aresta ({self.node},{self.node_target}) não existe!")
             print(f"   Nó atual: {self.node}")
             print(f"   Vizinhos reais: {list(self.network.neighbors(self.node))}")
             print(f"   Target escolhido: {self.node_target}")
@@ -274,7 +270,7 @@ class Train(mesa.Agent):
             
             # 5. Verifica se a distância é válida
             if total_distance <= 0:
-                print(f"⚠️ AVISO: Distância não-positiva entre {self.node} e {self.node_target}")
+                print(f"AVISO: Distância não-positiva entre {self.node} e {self.node_target}")
                 self.set_advance_to_next_node(True)
                 return
             
@@ -290,7 +286,7 @@ class Train(mesa.Agent):
                 self.set_advance_to_next_node(False)
                 
         except KeyError as e:
-            print(f"❌ KeyError inesperado: {e}")
+            print(f"ERRO: KeyError inesperado: {e}")
             self.node_target = None
         
         
@@ -715,8 +711,9 @@ class TrainFlowModel(mesa.Model):
         pelos trens em movimento (ou seja, trens que estão efetivamente entre dois nós).
         Trens parados em estação (OnStop=True) não bloqueiam as vias.
         """
-        # Faz uma cópia profunda do grafo original
-        self.G_runtime = copy.deepcopy(self.grid.G)
+        # Copia apenas a estrutura do grafo. Uma cópia profunda tentaria copiar
+        # agentes, modelo e NetworkGrid, que possuem referências circulares.
+        self.G_runtime = self.grid.G.copy()
     
         removed_edges = []
     
@@ -740,16 +737,11 @@ class TrainFlowModel(mesa.Model):
     def export_CSV(self, path):
         """
         Exporta os dados dos coletores para CSV.
-        O argumento `path` é concatenado ao diretório atual de execução.
+        Caminhos relativos são resolvidos a partir do diretório de execução;
+        caminhos absolutos são usados diretamente.
         """
-        # Diretório atual de execução
-        current_dir = os.getcwd()
-    
-        # Concatena o caminho relativo
-        full_path = os.path.join(current_dir, path)
-    
-        # Garante que o diretório existe
-        os.makedirs(full_path, exist_ok=True)
+        full_path = Path(path).expanduser().resolve()
+        full_path.mkdir(parents=True, exist_ok=True)
     
         # Obtém os DataFrames
         df_trains   = self.train_datacollector.get_agent_vars_dataframe()
@@ -757,14 +749,16 @@ class TrainFlowModel(mesa.Model):
         df_model    = self.model_datacollector.get_model_vars_dataframe()
         df_events = self.model_events_datacollector.get_model_vars_dataframe()
         
-        df_trains = df_trains[df_trains["Train ID"].notna()]  # remove linhas de agentes que não são trens
-        df_stations = df_stations[df_stations["Station ID"].notna()]
+        if "Train ID" in df_trains.columns:
+            df_trains = df_trains[df_trains["Train ID"].notna()]
+        if "Station ID" in df_stations.columns:
+            df_stations = df_stations[df_stations["Station ID"].notna()]
     
         # Monta caminhos completos
-        trains_path   = os.path.join(full_path, "trains.csv")
-        stations_path = os.path.join(full_path, "stations.csv")
-        model_path    = os.path.join(full_path, "model.csv")
-        events_path   = os.path.join(full_path, "model_events.csv")
+        trains_path = full_path / "trains.csv"
+        stations_path = full_path / "stations.csv"
+        model_path = full_path / "model.csv"
+        events_path = full_path / "model_events.csv"
     
         # Salva em CSV
         df_trains.to_csv(trains_path, index=False)
@@ -845,8 +839,6 @@ class TrainFlowModel(mesa.Model):
             self.train_datacollector.collect(model=self)
             self.station_datacollector.collect(model=self)
             self.model_datacollector.collect(model=self)
-        else:
-            print("⚠️ Coleta de métricas desativada: LogMetrics está definido como False.")  
        
         # (10) Atualiza a contagem de steps da simulação em 1
         self.step_count += 1
