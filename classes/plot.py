@@ -7,9 +7,7 @@ Created on Thu Sep  4 15:30:51 2025
 
 import networkx as nx
 import matplotlib.pyplot as plt
-from pyvis.network import Network
-import webbrowser
-import os
+from pathlib import Path
 
 def print_network_state(G, time):
     """
@@ -64,7 +62,7 @@ def print_network_state(G, time):
     print(f"{'='*100}\n")
 
 
-def plot_network_state(G_original, G_runtime, time):
+def plot_network_state(G_original, G_runtime, time, output_file=None, show=True):
     """
     Plota o grafo mostrando:
     - Estações (quadrados laranja)
@@ -144,105 +142,13 @@ def plot_network_state(G_original, G_runtime, time):
               f"Blocked edges: {len(blocked_edges)}", fontsize=12)
     plt.axis('off')
     plt.tight_layout()
-    plt.show()
 
+    if output_file is not None:
+        output_path = Path(output_file).expanduser().resolve()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(output_path, dpi=150, bbox_inches="tight")
 
-
-
-
-def plot_network_state_pyvis(G, time):
-    """
-    Plota o grafo interativo usando Pyvis:
-    - Estações: quadrados laranja grandes
-    - Trens: círculos verdes menores
-    - Nomes das estações e IDs dos trens
-    - Pesos das arestas
-    - Respeita posições fixas
-    """
-    import webbrowser
-    import networkx as nx
-    from pyvis.network import Network
-
-    # Layout fixo
-    pos = nx.spring_layout(G, seed=42, k=0.5)  # k controla distância entre nós
-
-    # Cria rede Pyvis
-    net = Network(height="750px", width="100%", bgcolor="#f9f9f9", font_color="black")
-    
-    # Adiciona nós
-    for n in G.nodes():
-        if n is None:
-            continue
-
-        agents = G.nodes[n].get('agent', [])
-        label = str(n)
-        node_color = "#d3d3d3"  # cinza neutro
-        shape = "dot"
-        size = 20
-
-        if agents:
-            # Estações
-            station_present = any(type(agent).__name__ == "Station" for agent in agents)
-            if station_present:
-                shape = "square"
-                node_color = "#FF8C00"  # laranja mais escuro
-                size = 40
-                station_names = [getattr(agent,'name','') for agent in agents if type(agent).__name__ == "Station"]
-                label += "\n" + ", ".join(station_names)
-            # Trens
-            train_labels = []
-            for agent in agents:
-                if type(agent).__name__ == "Train":
-                    train_id = getattr(agent,'trainID','N/A')
-                    train_labels.append(f"Train: {train_id}")
-            if train_labels:
-                label += "\n" + "\n".join(train_labels)
-                node_color = "#32CD32"  # verde limão
-                size = 25
-                shape = "circle"
-
-        # Adiciona nó com posições fixas
-        x, y = pos[n]
-        net.add_node(
-            n,
-            label=label,
-            color=node_color,
-            shape=shape,
-            size=size,
-            x=x*1200,  # multiplicador maior para melhor espaçamento
-            y=y*1200,
-            physics=False
-        )
-
-    # Adiciona arestas
-    for u, v, data in G.edges(data=True):
-        if u is None or v is None:
-            continue
-        weight = data.get('weight', 1)
-        net.add_edge(u, v, value=float(weight), title=str(weight), color='#888888')
-
-    # Configurações visuais adicionais
-    net.set_options("""
-    var options = {
-      "nodes": {
-        "font": {"size": 14, "face": "Arial"},
-        "borderWidth": 2,
-        "borderWidthSelected": 4
-      },
-      "edges": {
-        "color": {"inherit": true},
-        "smooth": {"type": "continuous"}
-      },
-      "physics": {"enabled": false},
-      "interaction": {"hover": true}
-    }
-    """)
-
-
-    os.chdir(r'C:\Kegle_Jojo\Train_Dynamics\Step_images')
-    # Define o nome do arquivo dentro da pasta
-    filename = f"network_step_{time}.html"
-    net.write_html(filename, notebook=False)
-
-
-
+    if show:
+        plt.show()
+    else:
+        plt.close()

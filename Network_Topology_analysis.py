@@ -36,7 +36,7 @@ for edge in G_smallworld.edges():
     node1, node2 = edge
     distance = min(abs(node1 - node2), 12 - abs(node1 - node2))
     if distance > 2:  # Conexões que não são entre vizinhos diretos
-        print(f"  Atalho: {node1} ↔ {node2} (distância: {distance})")
+        print(f"  Atalho: {node1} <-> {node2} (distância: {distance})")
         
         
 # Rede de transição (p = 0.5)
@@ -133,7 +133,7 @@ plt.show()
 
 # Mostrar padrões das matrizes
 print("PADRÕES NAS MATRIZES DE ADJACÊNCIA:")
-print("• p=0: Diagonal com 1's próximos - padrão regular")
-print("• p=0.05: Padrão regular com alguns 1's fora da diagonal - atalhos")
-print("• p=0.5: Mistura de padrão regular e aleatório")
-print("• p=1: Distribuição aleatória de 1's - padrão desorganizado")
+print("- p=0: Diagonal com 1's próximos - padrão regular")
+print("- p=0.05: Padrão regular com alguns 1's fora da diagonal - atalhos")
+print("- p=0.5: Mistura de padrão regular e aleatório")
+print("- p=1: Distribuição aleatória de 1's - padrão desorganizado")

@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools==68.2.2", "wheel==0.41.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "train-dynamics"
+version = "0.1.0"
+description = "Simulador ferroviário discreto baseado em agentes e grafos ponderados."
+readme = "Documentation/README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "mesa==3.2.0",
+    "networkx==3.1",
+    "numpy==1.26.4",
+    "pandas==2.1.4",
+    "matplotlib==3.8.0",
+]
+
+[project.scripts]
+train-dynamics = "run:main"
+
+[tool.setuptools]
+py-modules = ["run"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["classes*", "Configuration*"]
+exclude = ["Documentation*", "Logs*", "Step_images*"]

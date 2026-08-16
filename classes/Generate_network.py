@@ -291,7 +291,7 @@ def criar_rede_completa(n, i, z, p=100, STEP_SCALE=1):
     ITINERARY_TABLE = {}
 
     if n > z:
-        print("⚠️ Aviso: há mais entradas do que saídas únicas. Algumas não terão destino exclusivo.")
+        print("AVISO: há mais entradas do que saídas únicas. Algumas não terão destino exclusivo.")
 
     for j in range(n):
         entrada_letra = letras[j]

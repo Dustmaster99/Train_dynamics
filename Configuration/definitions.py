@@ -3,10 +3,6 @@ Created on Thu Sep 25 21:27:53 2025
 
 @author: eosjo
 """
-import os
-os.chdir(r'C:\Kegle_Jojo\Train_Dynamics')
-
-
 from enum import Enum
 from dataclasses import dataclass
 from typing import List
