@@ -6,10 +6,6 @@ Created on Mon Oct 27 15:14:10 2025
 """
 
 
-import os
-os.chdir(r'C:\Kegle_Jojo\Train_Dynamics')
-
-
 from classes.Agents import TrainFlowModel
 import classes.Generate_network as Gen
 import classes.plot as plot
@@ -59,6 +55,5 @@ for t in range(n_steps):
     model.step()
     plot.print_network_state(model.grid.G,t) 
     plot.plot_network_state(model.grid.G, model.G_runtime, t)
-    #plot.plot_network_state_pyvis(model.grid.G,t)
 
               

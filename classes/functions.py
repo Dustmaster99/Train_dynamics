@@ -5,11 +5,6 @@ Created on Thu Sep 25 22:28:03 2025
 @author: eosjo
 """
 
-import os
-os.chdir(r'C:\Kegle_Jojo\Train_Dynamics')
-
-
-
 def zerar_diagonal_principal(adj_matrix):
     """
     Retorna uma cópia da matriz de adjacência com TODAS as tuplas/listas zeradas
